@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, MapPin, Briefcase, Phone, Filter, UserPlus } from "lucide-react";
+import { Search, MapPin, Briefcase, Phone, Filter, UserPlus, MessageSquare, Share2 } from "lucide-react";
 import { BloodGroup, FamilyBranch, FamilyMember, Language } from "@/types/family";
 
 interface MemberDirectoryProps {
@@ -26,6 +26,16 @@ export default function MemberDirectory({
   const [genFilter, setGenFilter] = useState("all");
   const [bloodFilter, setBloodFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+
+  const formatWhatsappUrl = (phoneOrWa?: string) => {
+    if (!phoneOrWa) return "";
+    let digits = phoneOrWa.replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.startsWith("01") && digits.length === 11) {
+      digits = "88" + digits;
+    }
+    return `https://wa.me/${digits}`;
+  };
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
@@ -181,10 +191,47 @@ export default function MemberDirectory({
                       : [m.locationEn, m.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || m.locationEn}
                   </span>
                 </div>
-                {m.phone && (
-                  <div className="flex items-center gap-1.5 text-stone-700 font-medium">
-                    <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                    <span>{m.phone}</span>
+                {(m.phone || m.whatsapp || m.socialLink) && (
+                  <div className="flex items-center justify-between gap-1 flex-wrap pt-1 text-stone-700 font-medium">
+                    {m.phone ? (
+                      <a
+                        href={`tel:${m.phone.replace(/\s+/g, "")}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 text-emerald-800 font-bold hover:underline"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                        <span>{m.phone}</span>
+                      </a>
+                    ) : <div />}
+
+                    <div className="flex items-center gap-1.5">
+                      {formatWhatsappUrl(m.whatsapp || m.phone) && (
+                        <a
+                          href={formatWhatsappUrl(m.whatsapp || m.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-[11px] border border-green-200"
+                          title="WhatsApp Chat"
+                        >
+                          <MessageSquare className="w-3 h-3 text-green-600" />
+                          <span>WhatsApp</span>
+                        </a>
+                      )}
+                      {m.socialLink && (
+                        <a
+                          href={m.socialLink.startsWith("http") ? m.socialLink : `https://${m.socialLink}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200"
+                          title="Social Link"
+                        >
+                          <Share2 className="w-3 h-3 text-blue-600" />
+                          <span>Social</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

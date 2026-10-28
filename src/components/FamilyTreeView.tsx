@@ -17,6 +17,8 @@ import {
   Phone,
   Scan,
   Sparkles,
+  MessageSquare,
+  Share2,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language } from "@/types/family";
 
@@ -42,6 +44,16 @@ export default function FamilyTreeView({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
   const [isCompact, setIsCompact] = useState<boolean>(false);
+
+  const formatWhatsappUrl = (phoneOrWa?: string) => {
+    if (!phoneOrWa) return "";
+    let digits = phoneOrWa.replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.startsWith("01") && digits.length === 11) {
+      digits = "88" + digits;
+    }
+    return `https://wa.me/${digits}`;
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -253,18 +265,47 @@ export default function FamilyTreeView({
                   </span>
                 </div>
 
-                {member.phone && (
-                  <div className="flex items-center gap-1.5 truncate">
-                    <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                {/* Contacts: Phone, WhatsApp, Social */}
+                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                  {member.phone && (
                     <a
                       href={`tel:${member.phone.replace(/\s+/g, "")}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-emerald-800 font-bold hover:underline truncate"
+                      className="inline-flex items-center gap-1 text-emerald-800 font-bold hover:underline"
                     >
-                      {member.phone}
+                      <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                      <span>{member.phone}</span>
                     </a>
-                  </div>
-                )}
+                  )}
+
+                  {(member.whatsapp || member.phone) && (
+                    <a
+                      href={formatWhatsappUrl(member.whatsapp || member.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-[11px]"
+                      title="WhatsApp Chat"
+                    >
+                      <MessageSquare className="w-3 h-3 text-emerald-700" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
+
+                  {member.socialLink && (
+                    <a
+                      href={member.socialLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px]"
+                      title="Social Link"
+                    >
+                      <Share2 className="w-3 h-3 text-blue-600" />
+                      <span>Social</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -352,10 +393,42 @@ export default function FamilyTreeView({
                   <span className="truncate">{member.locationBn}</span>
                 </p>
                 {member.phone && (
-                  <p className="truncate flex items-center gap-1 text-emerald-800 font-bold">
-                    <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
-                    <span className="truncate">{member.phone}</span>
-                  </p>
+                  <div className="flex items-center justify-between gap-1 pt-0.5">
+                    <a
+                      href={`tel:${member.phone.replace(/\s+/g, "")}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="truncate flex items-center gap-1 text-emerald-800 font-bold hover:underline"
+                    >
+                      <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
+                      <span className="truncate">{member.phone}</span>
+                    </a>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {formatWhatsappUrl(member.whatsapp || member.phone) && (
+                        <a
+                          href={formatWhatsappUrl(member.whatsapp || member.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-green-600 hover:text-green-700"
+                          title="WhatsApp"
+                        >
+                          <MessageSquare className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                      {member.socialLink && (
+                        <a
+                          href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-blue-600 hover:text-blue-700"
+                          title="Social Link"
+                        >
+                          <Share2 className="w-2.5 h-2.5" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -497,19 +570,52 @@ export default function FamilyTreeView({
                 </span>
               </div>
 
-              {/* Phone Number */}
-              {member.phone ? (
-                <div className="flex items-center gap-1.5 truncate">
-                  <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                  <a
-                    href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-emerald-800 font-bold hover:underline truncate"
-                  >
-                    {member.phone}
-                  </a>
+              {/* Phone & WhatsApp & Social */}
+              {(member.phone || member.whatsapp || member.socialLink) && (
+                <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
+                  {member.phone ? (
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                      <a
+                        href={`tel:${member.phone.replace(/\s+/g, "")}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-emerald-800 font-bold hover:underline truncate"
+                      >
+                        {member.phone}
+                      </a>
+                    </div>
+                  ) : <div />}
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {formatWhatsappUrl(member.whatsapp || member.phone) && (
+                      <a
+                        href={formatWhatsappUrl(member.whatsapp || member.phone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-[11px] border border-green-200"
+                        title="WhatsApp Chat"
+                      >
+                        <MessageSquare className="w-3 h-3 text-green-600" />
+                        <span>WA</span>
+                      </a>
+                    )}
+                    {member.socialLink && (
+                      <a
+                        href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200"
+                        title="Social Link"
+                      >
+                        <Share2 className="w-3 h-3 text-blue-600" />
+                        <span>Social</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
-              ) : null}
+              )}
 
               {/* Profession (if available) */}
               {member.professionBn && member.professionBn !== "-" && member.professionBn !== "জানা নেই" && (

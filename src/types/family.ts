@@ -44,6 +44,8 @@ export interface FamilyMember {
   locationBn: string;
   locationEn: string;
   phone?: string;
+  whatsapp?: string;
+  socialLink?: string;
   email?: string;
   bioBn: string;
   bioEn: string;

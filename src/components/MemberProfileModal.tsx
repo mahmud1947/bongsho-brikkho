@@ -150,7 +150,7 @@ export default function MemberProfileModal({
               <div className="col-span-2 p-3 rounded-2xl bg-rose-50/60 border border-rose-100 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-rose-700 font-bold text-xs">
                   <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-                  <span>{lang === "bn" ? "জীবনসঙ্গী (স্পাউস)" : "Spouse"}</span>
+                  <span>{lang === "bn" ? "জীবনসঙ্গী" : "Spouse"}</span>
                 </div>
                 <div className="pl-5 text-xs text-stone-700 space-y-1">
                   <p className="font-bold text-stone-900 text-sm">
@@ -160,16 +160,6 @@ export default function MemberProfileModal({
                     <p className="text-stone-600 flex items-center gap-1">
                       <span>💼</span>
                       <span>{lang === "bn" ? member.spouseProfessionBn : member.spouseProfessionEn}</span>
-                    </p>
-                  )}
-                  {(member.spouseLocationBn || member.spouseLocationEn) && (
-                    <p className="text-stone-600 flex items-center gap-1">
-                      <span>📍</span>
-                      <span>
-                        {lang === "bn"
-                          ? `ঠিকানা / বাপের বাড়ি: ${member.spouseLocationBn}`
-                          : `Address: ${member.spouseLocationEn}`}
-                      </span>
                     </p>
                   )}
                   {member.spousePhone && (
@@ -187,10 +177,34 @@ export default function MemberProfileModal({
             {member.phone && (
               <a
                 href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-950"
+                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-950 hover:bg-emerald-100 transition"
               >
                 <Phone className="w-4 h-4 text-emerald-700 flex-shrink-0" />
                 <span className="truncate">{member.phone}</span>
+              </a>
+            )}
+
+            {(member.whatsapp || member.phone) && (
+              <a
+                href={`https://wa.me/${(member.whatsapp || member.phone || "").replace(/\D/g, "").replace(/^01/, "8801")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-100/70 border border-emerald-300 font-bold text-emerald-950 hover:bg-emerald-200 transition"
+              >
+                <span className="text-base">💬</span>
+                <span className="truncate">WhatsApp</span>
+              </a>
+            )}
+
+            {member.socialLink && (
+              <a
+                href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="col-span-2 flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-200 font-bold text-blue-900 hover:bg-blue-100 transition"
+              >
+                <span className="text-base">🌐</span>
+                <span className="truncate">{lang === "bn" ? "সোশ্যাল প্রোফাইল" : "Social Profile"}</span>
               </a>
             )}
 
