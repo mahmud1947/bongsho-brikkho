@@ -597,16 +597,16 @@ export default function FamilyTreeView({
 
   return (
     <div className="space-y-3">
-      {/* Mobile Friendly Compact Toolbar */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-3 shadow-sm space-y-2.5">
-        {/* Row 1: View Switcher (Chart / List), Compact Mode Toggle & Branches */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+      {/* Clean Compact Toolbar */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-2.5 sm:p-3 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        {/* Left: View Switcher (Chart / List) & Density Switcher (Details / Compact) */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Chart / List Switcher */}
-          <div className="flex bg-stone-100 p-1 rounded-xl flex-shrink-0">
+          <div className="flex bg-stone-100 p-1 rounded-xl">
             <button
               onClick={() => setViewMode("canvas")}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
-                viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
+                viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               <Network className="w-3.5 h-3.5" />
@@ -614,8 +614,8 @@ export default function FamilyTreeView({
             </button>
             <button
               onClick={() => setViewMode("mobile-tree")}
-              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
-                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
+                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
               }`}
             >
               <LayoutList className="w-3.5 h-3.5" />
@@ -625,7 +625,7 @@ export default function FamilyTreeView({
 
           {/* Density Switcher for Chart (Details vs Compact Mini-Cards) */}
           {viewMode === "canvas" && (
-            <div className="flex bg-amber-50 border border-amber-200 p-1 rounded-xl flex-shrink-0">
+            <div className="flex bg-amber-50 border border-amber-200 p-1 rounded-xl">
               <button
                 onClick={() => setIsCompact(false)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
@@ -645,34 +645,11 @@ export default function FamilyTreeView({
               </button>
             </div>
           )}
-
-          {/* Branch Filter Pills */}
-          <button
-            onClick={() => setSelectedBranch("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer flex-shrink-0 ${
-              selectedBranch === "all" ? "bg-emerald-900 text-amber-300 shadow-sm" : "bg-stone-100 text-stone-700"
-            }`}
-          >
-            {lang === "bn" ? "সব" : "All"}
-          </button>
-          {branches
-            .filter((b) => b.id !== "root")
-            .map((b) => (
-              <button
-                key={b.id}
-                onClick={() => setSelectedBranch(b.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer flex-shrink-0 ${
-                  selectedBranch === b.id ? "bg-emerald-900 text-amber-300 shadow-sm" : "bg-stone-100 text-stone-700"
-                }`}
-              >
-                {lang === "bn" ? b.nameBn : b.nameEn}
-              </button>
-            ))}
         </div>
 
-        {/* Row 2: Search, Fit Screen, Expand, Compact & Zoom Controls */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-between">
-          <div className="relative flex-1 min-w-[140px]">
+        {/* Right: Search, Fit Screen, & Zoom Controls */}
+        <div className="flex items-center gap-2 justify-between sm:justify-end">
+          <div className="relative flex-1 sm:w-56">
             <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -696,9 +673,9 @@ export default function FamilyTreeView({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-            {/* 1-Tap Fit to Screen Button */}
-            {viewMode === "canvas" && (
+          {viewMode === "canvas" && (
+            <div className="flex items-center gap-1.5">
+              {/* 1-Tap Fit to Screen Button */}
               <button
                 onClick={handleFitScreen}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer hover:bg-emerald-800 shadow-sm"
@@ -707,22 +684,7 @@ export default function FamilyTreeView({
                 <Scan className="w-3.5 h-3.5" />
                 <span>{lang === "bn" ? "ফিট স্ক্রিন" : "Fit"}</span>
               </button>
-            )}
 
-            <button
-              onClick={expandAll}
-              className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
-            >
-              {lang === "bn" ? "খুলুন" : "Expand"}
-            </button>
-            <button
-              onClick={collapseCompact}
-              className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
-            >
-              {lang === "bn" ? "সংক্ষিপ্ত" : "Compact"}
-            </button>
-
-            {viewMode === "canvas" && (
               <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl">
                 <button
                   onClick={() => setZoom((z) => Math.max(0.35, +(z - 0.1).toFixed(2)))}
@@ -746,8 +708,8 @@ export default function FamilyTreeView({
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

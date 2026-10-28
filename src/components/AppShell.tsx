@@ -48,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Compact Single-Word Stats Strip */}
       <section className="bg-emerald-900 text-white border-b border-emerald-800">
         <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5">
-          <div className="grid grid-cols-4 gap-2 sm:gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div className="bg-emerald-950/50 border border-emerald-700/60 rounded-xl px-3 py-1.5 flex items-center justify-between">
               <span className="text-[11px] sm:text-xs text-amber-300 font-semibold flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 hidden sm:inline" />
@@ -76,16 +76,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </span>
               <span className="text-sm sm:text-lg font-extrabold">
                 {stats.branches}
-              </span>
-            </div>
-
-            <div className="bg-emerald-950/50 border border-emerald-700/60 rounded-xl px-3 py-1.5 flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs text-rose-300 font-semibold flex items-center gap-1.5">
-                <HeartPulse className="w-3.5 h-3.5 hidden sm:inline" />
-                {lang === "bn" ? "রক্তদাতা" : "Donors"}
-              </span>
-              <span className="text-sm sm:text-lg font-extrabold">
-                {stats.donors}
               </span>
             </div>
           </div>
