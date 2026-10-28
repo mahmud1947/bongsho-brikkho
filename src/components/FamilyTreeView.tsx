@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   ZoomIn,
   ZoomOut,
@@ -15,6 +15,8 @@ import {
   Network,
   Globe,
   Phone,
+  Scan,
+  Sparkles,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language } from "@/types/family";
 
@@ -39,6 +41,18 @@ export default function FamilyTreeView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
+  const [isCompact, setIsCompact] = useState<boolean>(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Auto-fit on mobile screens on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setZoom(0.65);
+      setIsCompact(true);
+    }
+  }, []);
 
   const childrenMap = useMemo(() => {
     const map: Record<string, FamilyMember[]> = {};
@@ -69,6 +83,19 @@ export default function FamilyTreeView({
       }
     });
     setCollapsedIds(next);
+  };
+
+  // 1-Tap Fit to Screen
+  const handleFitScreen = () => {
+    if (!containerRef.current || !contentRef.current) return;
+    const containerWidth = containerRef.current.clientWidth;
+    const contentWidth = contentRef.current.scrollWidth;
+    if (contentWidth > 0) {
+      const unscaledWidth = contentWidth / zoom;
+      const targetRatio = (containerWidth - 36) / unscaledWidth;
+      const newZoom = Math.min(1.2, Math.max(0.35, +targetRatio.toFixed(2)));
+      setZoom(newZoom);
+    }
   };
 
   const matchingMembers = useMemo(() => {
@@ -212,7 +239,6 @@ export default function FamilyTreeView({
 
               {/* Country, Present Address & Phone */}
               <div className="space-y-1 pt-1 text-xs text-stone-600">
-                {/* Country */}
                 <div className="flex items-center gap-1.5 text-stone-700 truncate">
                   <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
                   <span className="font-semibold truncate">
@@ -220,7 +246,6 @@ export default function FamilyTreeView({
                   </span>
                 </div>
 
-                {/* Present Address */}
                 <div className="flex items-center gap-1.5 truncate">
                   <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
                   <span className="truncate">
@@ -228,7 +253,6 @@ export default function FamilyTreeView({
                   </span>
                 </div>
 
-                {/* Phone */}
                 {member.phone && (
                   <div className="flex items-center gap-1.5 truncate">
                     <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
@@ -296,6 +320,108 @@ export default function FamilyTreeView({
     const isCollapsed = !!collapsedIds[member.id];
     const style = getBranchStyle(member.branchId);
 
+    // COMPACT CARD (Specifically optimized for Mobile so multiple branches fit without scrolling)
+    if (isCompact) {
+      return (
+        <div key={member.id} className="flex flex-col items-center relative px-1">
+          <div
+            id={`tree-node-${member.id}`}
+            onClick={() => onSelectMember(member)}
+            className={`w-36 sm:w-44 rounded-xl bg-white border-2 ${style.border} shadow-sm hover:shadow-lg transition cursor-pointer relative ${
+              highlightedId === member.id ? "ring-2 ring-amber-400" : ""
+            }`}
+          >
+            {/* Header: Gen • Sex | Status */}
+            <div className={`px-2 py-1 rounded-t-[10px] flex items-center justify-between text-[10px] font-bold ${style.header}`}>
+              <span>
+                G{member.generation} • {member.gender === "female" ? (lang === "bn" ? "নারী" : "F") : (lang === "bn" ? "পুরুষ" : "M")}
+              </span>
+              <span className="text-[9px] px-1 rounded bg-white/20">
+                {member.isAlive ? (lang === "bn" ? "জীবিত" : "L") : (lang === "bn" ? "প্রয়াত" : "D")}
+              </span>
+            </div>
+
+            <div className="p-2 space-y-1">
+              <h3 className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate">
+                {lang === "bn" ? member.nameBn : member.nameEn}
+              </h3>
+
+              <div className="text-[10px] text-stone-600 space-y-0.5 pt-0.5 border-t border-stone-100">
+                <p className="truncate flex items-center gap-1">
+                  <MapPin className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
+                  <span className="truncate">{member.locationBn}</span>
+                </p>
+                {member.phone && (
+                  <p className="truncate flex items-center gap-1 text-emerald-800 font-bold">
+                    <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
+                    <span className="truncate">{member.phone}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-1 flex items-center justify-between">
+                <span className="text-[9px] text-blue-600 font-medium truncate">
+                  {lang === "bn" ? member.countryBn || "বাংলাদেশ" : member.countryEn || "BD"}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddChildToMember(member);
+                  }}
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[9px] font-bold"
+                  title={lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
+                >
+                  <UserPlus className="w-2.5 h-2.5" />
+                  <span>+</span>
+                </button>
+              </div>
+            </div>
+
+            {hasChildren && (
+              <button
+                type="button"
+                onClick={(e) => toggleCollapse(member.id, e)}
+                className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-900 text-amber-300 text-[9px] font-bold shadow cursor-pointer hover:bg-emerald-800"
+              >
+                <span>{visibleChildren.length}</span>
+                {isCollapsed ? <ChevronRight className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+              </button>
+            )}
+          </div>
+
+          {hasChildren && !isCollapsed && (
+            <div className="flex flex-col items-center">
+              <div className="w-0.5 h-5 bg-emerald-700/60" />
+              <div className="flex items-start justify-center relative">
+                {visibleChildren.map((child, idx) => {
+                  const isOnly = visibleChildren.length === 1;
+                  return (
+                    <div key={child.id} className="flex flex-col items-center relative">
+                      {!isOnly && (
+                        <div
+                          className={`h-0.5 bg-emerald-700/60 absolute top-0 ${
+                            idx === 0
+                              ? "left-1/2 right-0"
+                              : idx === visibleChildren.length - 1
+                              ? "left-0 right-1/2"
+                              : "left-0 right-0"
+                          }`}
+                        />
+                      )}
+                      <div className="w-0.5 h-4 bg-emerald-700/60" />
+                      {renderCanvasNode(child)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // FULL DETAILED CARD
     return (
       <div key={member.id} className="flex flex-col items-center relative px-2">
         <div
@@ -473,8 +599,9 @@ export default function FamilyTreeView({
     <div className="space-y-3">
       {/* Mobile Friendly Compact Toolbar */}
       <div className="bg-white rounded-2xl border border-stone-200 p-3 shadow-sm space-y-2.5">
-        {/* Row 1: View Switcher (Chart / List) & Branches */}
+        {/* Row 1: View Switcher (Chart / List), Compact Mode Toggle & Branches */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          {/* Chart / List Switcher */}
           <div className="flex bg-stone-100 p-1 rounded-xl flex-shrink-0">
             <button
               onClick={() => setViewMode("canvas")}
@@ -496,6 +623,30 @@ export default function FamilyTreeView({
             </button>
           </div>
 
+          {/* Density Switcher for Chart (Details vs Compact Mini-Cards) */}
+          {viewMode === "canvas" && (
+            <div className="flex bg-amber-50 border border-amber-200 p-1 rounded-xl flex-shrink-0">
+              <button
+                onClick={() => setIsCompact(false)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                  !isCompact ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-amber-900"
+                }`}
+              >
+                {lang === "bn" ? "ডিটেইলস" : "Full"}
+              </button>
+              <button
+                onClick={() => setIsCompact(true)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                  isCompact ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-amber-900"
+                }`}
+              >
+                <Sparkles className="w-3 h-3 inline mr-1" />
+                {lang === "bn" ? "কমপ্যাক্ট" : "Mini"}
+              </button>
+            </div>
+          )}
+
+          {/* Branch Filter Pills */}
           <button
             onClick={() => setSelectedBranch("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer flex-shrink-0 ${
@@ -519,9 +670,9 @@ export default function FamilyTreeView({
             ))}
         </div>
 
-        {/* Row 2: Search, Expand, Compact & Zoom Controls */}
+        {/* Row 2: Search, Fit Screen, Expand, Compact & Zoom Controls */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-between">
-          <div className="relative flex-1 min-w-[160px]">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -546,6 +697,18 @@ export default function FamilyTreeView({
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+            {/* 1-Tap Fit to Screen Button */}
+            {viewMode === "canvas" && (
+              <button
+                onClick={handleFitScreen}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer hover:bg-emerald-800 shadow-sm"
+                title={lang === "bn" ? "স্ক্রিনে ফিট করুন" : "Fit to screen"}
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span>{lang === "bn" ? "ফিট স্ক্রিন" : "Fit"}</span>
+              </button>
+            )}
+
             <button
               onClick={expandAll}
               className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
@@ -562,14 +725,14 @@ export default function FamilyTreeView({
             {viewMode === "canvas" && (
               <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl">
                 <button
-                  onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(1)))}
+                  onClick={() => setZoom((z) => Math.max(0.35, +(z - 0.1).toFixed(2)))}
                   className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(1)))}
+                  onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))}
                   className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
                   title="Zoom In"
                 >
@@ -578,7 +741,7 @@ export default function FamilyTreeView({
                 <button
                   onClick={() => setZoom(1)}
                   className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
-                  title="Reset"
+                  title="Reset 100%"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
@@ -594,12 +757,16 @@ export default function FamilyTreeView({
           {rootMembers.map((root) => renderMobileNode(root))}
         </div>
       ) : (
-        <div className="bg-white/70 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-4 sm:p-8 min-h-[520px] touch-pan-x touch-pan-y overscroll-x-contain">
+        <div
+          ref={containerRef}
+          className="bg-white/70 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-3 sm:p-8 min-h-[500px] touch-pan-x touch-pan-y overscroll-x-contain"
+        >
           <div
+            ref={contentRef}
             className="inline-flex min-w-full justify-start sm:justify-center transition-transform duration-200 origin-top-left sm:origin-top"
             style={{ transform: `scale(${zoom})` }}
           >
-            <div className="flex items-start gap-6 pb-12 pt-2">
+            <div className="flex items-start gap-4 sm:gap-6 pb-12 pt-2">
               {rootMembers.map((root) => renderCanvasNode(root))}
             </div>
           </div>
