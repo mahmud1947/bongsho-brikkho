@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,21 +11,16 @@ import {
   Bell,
   UserPlus,
   Globe,
-  Download,
-  Upload,
   RotateCcw,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 
 export default function Navbar() {
   const pathname = usePathname();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     lang,
     setLang,
     openAddModal,
-    exportJson,
-    importJson,
     resetData,
     members,
     notices,
@@ -120,38 +115,6 @@ export default function Navbar() {
 
             {/* Actions */}
             <div className="flex items-center gap-1.5">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) importJson(f);
-                  e.target.value = "";
-                }}
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                title="Import JSON"
-                className="p-2 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-emerald-200 cursor-pointer"
-              >
-                <Upload className="w-4 h-4" />
-              </button>
-              <button
-                onClick={exportJson}
-                title="Export JSON"
-                className="p-2 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-emerald-200 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-              <button
-                onClick={resetData}
-                title="Clear"
-                className="hidden sm:flex p-2 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-emerald-200 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
               <button
                 onClick={() => setLang(lang === "bn" ? "en" : "bn")}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs font-bold text-amber-300 cursor-pointer"

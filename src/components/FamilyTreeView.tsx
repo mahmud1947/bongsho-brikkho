@@ -38,7 +38,6 @@ export default function FamilyTreeView({
   onAddChildToMember,
 }: FamilyTreeViewProps) {
   const [zoom, setZoom] = useState<number>(1);
-  const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -130,7 +129,6 @@ export default function FamilyTreeView({
       curr = members.find((m) => m.id === curr?.parentId);
     }
     setCollapsedIds(nextCollapsed);
-    setSelectedBranch("all");
     setHighlightedId(member.id);
     setSearchQuery("");
     setTimeout(() => {
@@ -192,12 +190,7 @@ export default function FamilyTreeView({
 
   // Mobile / List Mode Card
   const renderMobileNode = (member: FamilyMember): React.ReactNode => {
-    if (selectedBranch !== "all" && member.generation > 1 && member.branchId !== selectedBranch) {
-      return null;
-    }
-    const visibleChildren = (childrenMap[member.id] || []).filter(
-      (c) => selectedBranch === "all" || c.generation <= 1 || c.branchId === selectedBranch
-    );
+    const visibleChildren = childrenMap[member.id] || [];
     const hasChildren = visibleChildren.length > 0;
     const isCollapsed = !!collapsedIds[member.id];
     const style = getBranchStyle(member.branchId);
@@ -351,12 +344,7 @@ export default function FamilyTreeView({
 
   // Canvas / Tree Node Card
   const renderCanvasNode = (member: FamilyMember): React.ReactNode => {
-    if (selectedBranch !== "all" && member.generation > 1 && member.branchId !== selectedBranch) {
-      return null;
-    }
-    const visibleChildren = (childrenMap[member.id] || []).filter(
-      (c) => selectedBranch === "all" || c.generation <= 1 || c.branchId === selectedBranch
-    );
+    const visibleChildren = childrenMap[member.id] || [];
     const hasChildren = visibleChildren.length > 0;
     const isCollapsed = !!collapsedIds[member.id];
     const style = getBranchStyle(member.branchId);
