@@ -36,6 +36,8 @@ export interface FamilyMember {
   professionEn: string;
   educationBn?: string;
   educationEn?: string;
+  countryBn?: string;
+  countryEn?: string;
   locationBn: string;
   locationEn: string;
   phone?: string;

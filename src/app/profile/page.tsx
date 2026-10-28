@@ -15,6 +15,8 @@ import {
   LogOut,
   Save,
   ArrowUpRight,
+  Globe,
+  AlertCircle,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { BloodGroup } from "@/types/family";
@@ -29,6 +31,24 @@ const BLOOD_GROUPS: BloodGroup[] = [
   "AB+",
   "AB-",
   "Unknown",
+];
+
+const COUNTRY_OPTIONS = [
+  { bn: "বাংলাদেশ", en: "Bangladesh" },
+  { bn: "যুক্তরাজ্য (ইউকে)", en: "United Kingdom (UK)" },
+  { bn: "যুক্তরাষ্ট্র (ইউএসএ)", en: "United States (USA)" },
+  { bn: "সৌদি আরব", en: "Saudi Arabia" },
+  { bn: "সংযুক্ত আরব আমিরাত (ইউএই)", en: "UAE" },
+  { bn: "কাতার", en: "Qatar" },
+  { bn: "কুয়েত", en: "Kuwait" },
+  { bn: "ওমান", en: "Oman" },
+  { bn: "বাহরাইন", en: "Bahrain" },
+  { bn: "মালয়েশিয়া", en: "Malaysia" },
+  { bn: "সিঙ্গাপুর", en: "Singapore" },
+  { bn: "কানাডা", en: "Canada" },
+  { bn: "অস্ট্রেলিয়া", en: "Australia" },
+  { bn: "ইতালি", en: "Italy" },
+  { bn: "অন্যান্য (লিখুন)", en: "Other (Type)" },
 ];
 
 const PROFESSION_OPTIONS = [
@@ -47,20 +67,19 @@ const PROFESSION_OPTIONS = [
 
 const YEARS = Array.from({ length: 2026 - 1850 + 1 }, (_, i) => String(2026 - i));
 const MONTHS = [
-  { val: "01", bn: "০১ (জানুয়ারি)", en: "01 (Jan)" },
-  { val: "02", bn: "০২ (ফেব্রুয়ারি)", en: "02 (Feb)" },
-  { val: "03", bn: "০৩ (মার্চ)", en: "03 (Mar)" },
-  { val: "04", bn: "০৪ (এপ্রিল)", en: "04 (Apr)" },
-  { val: "05", bn: "০৫ (মে)", en: "05 (May)" },
-  { val: "06", bn: "০৬ (জুন)", en: "06 (Jun)" },
-  { val: "07", bn: "০৭ (জুলাই)", en: "07 (Jul)" },
-  { val: "08", bn: "০৮ (আগস্ট)", en: "08 (Aug)" },
-  { val: "09", bn: "০৯ (সেপ্টেম্বর)", en: "09 (Sep)" },
-  { val: "10", bn: "১০ (অক্টোবর)", en: "10 (Oct)" },
-  { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)" },
-  { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)" },
+  { val: "01", bn: "০১ (জানুয়ারি)", en: "01 (Jan)", days: 31 },
+  { val: "02", bn: "০২ (ফেব্রুয়ারি)", en: "02 (Feb)", days: 29 },
+  { val: "03", bn: "০৩ (মার্চ)", en: "03 (Mar)", days: 31 },
+  { val: "04", bn: "০৪ (এপ্রিল)", en: "04 (Apr)", days: 30 },
+  { val: "05", bn: "০৫ (মে)", en: "05 (May)", days: 31 },
+  { val: "06", bn: "০৬ (জুন)", en: "06 (Jun)", days: 30 },
+  { val: "07", bn: "০৭ (জুলাই)", en: "07 (Jul)", days: 31 },
+  { val: "08", bn: "০৮ (আগস্ট)", en: "08 (Aug)", days: 31 },
+  { val: "09", bn: "০৯ (সেপ্টেম্বর)", en: "09 (Sep)", days: 30 },
+  { val: "10", bn: "১০ (অক্টোবর)", en: "10 (Oct)", days: 31 },
+  { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)", days: 30 },
+  { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)", days: 31 },
 ];
-const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 
 export default function ProfilePage() {
   const {
@@ -91,6 +110,8 @@ export default function ProfilePage() {
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>("O+");
   const [professionSelect, setProfessionSelect] = useState<string>("শিক্ষার্থী");
   const [professionCustom, setProfessionCustom] = useState<string>("");
+  const [countrySelect, setCountrySelect] = useState<string>("বাংলাদেশ");
+  const [countryCustom, setCountryCustom] = useState<string>("");
   const [locationBn, setLocationBn] = useState("");
   const [maritalStatus, setMaritalStatus] = useState<"married" | "unmarried">("unmarried");
   const [spouseNameBn, setSpouseNameBn] = useState("");
@@ -98,6 +119,10 @@ export default function ProfilePage() {
   const [birthYearPart, setBirthYearPart] = useState<string>("unknown");
   const [birthMonthPart, setBirthMonthPart] = useState<string>("");
   const [birthDayPart, setBirthDayPart] = useState<string>("");
+
+  // Validations
+  const [formError, setFormError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const handleParentChange = (newParentId: string) => {
     setParentId(newParentId);
@@ -113,6 +138,27 @@ export default function ProfilePage() {
       setBranchId(`child-${Math.min(count + 1, 10)}`);
     }
   };
+
+  const handlePhoneChange = (val: string) => {
+    let cleaned = val.replace(/[^\d+]/g, "");
+    if (cleaned.indexOf("+") > 0) {
+      cleaned = cleaned[0] + cleaned.slice(1).replace(/\+/g, "");
+    }
+    setPhone(cleaned);
+
+    const digitCount = cleaned.replace(/\D/g, "").length;
+    if (cleaned && digitCount < 6) {
+      setPhoneError(lang === "bn" ? "ফোন নম্বর কমপক্ষে ৬ ডিজিটের হতে হবে" : "Phone must be at least 6 digits");
+    } else if (digitCount > 15) {
+      setPhoneError(lang === "bn" ? "ফোন নম্বর সর্বোচ্চ ১৫ ডিজিটের হতে পারে" : "Phone max 15 digits");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  const selectedMonthObj = MONTHS.find((m) => m.val === birthMonthPart);
+  const maxDays = selectedMonthObj?.days || 31;
+  const daysList = Array.from({ length: maxDays }, (_, i) => String(i + 1).padStart(2, "0"));
 
   // STEP 1: Enter Username
   if (!currentUsername) {
@@ -157,6 +203,22 @@ export default function ProfilePage() {
   if (!currentUserProfile) {
     const handleCreateProfile = async (e: React.FormEvent) => {
       e.preventDefault();
+      setFormError("");
+
+      if (!nameBn.trim() && !nameEn.trim()) {
+        setFormError(lang === "bn" ? "অনুগ্রহ করে অন্তত একটি নাম (বাংলা বা ইংরেজি) লিখুন" : "Please enter at least one name");
+        return;
+      }
+
+      if (phone.trim()) {
+        const digitCount = phone.replace(/\D/g, "").length;
+        if (digitCount < 6 || digitCount > 15) {
+          setPhoneError(lang === "bn" ? "সঠিক ফোন নম্বর দিন (৬ থেকে ১৫ ডিজিট)" : "Please enter a valid phone (6-15 digits)");
+          setFormError(lang === "bn" ? "ফোন নম্বরটি সঠিক নয়" : "Invalid phone number");
+          return;
+        }
+      }
+
       const finalNameBn = nameBn.trim() || nameEn.trim() || currentUsername;
       const finalNameEn = nameEn.trim() || nameBn.trim() || currentUsername;
 
@@ -192,6 +254,16 @@ export default function ProfilePage() {
           ? professionCustom.trim() || "Unknown"
           : matchedProf?.en || "Unknown";
 
+      const matchedCountry = COUNTRY_OPTIONS.find((c) => c.bn === countrySelect);
+      const finalCountryBn =
+        countrySelect === "custom"
+          ? countryCustom.trim() || "বাংলাদেশ"
+          : matchedCountry?.bn || "বাংলাদেশ";
+      const finalCountryEn =
+        countrySelect === "custom"
+          ? countryCustom.trim() || "Bangladesh"
+          : matchedCountry?.en || "Bangladesh";
+
       let finalBirth = "জানা নেই";
       if (birthYearPart !== "unknown") {
         finalBirth = birthYearPart;
@@ -221,6 +293,8 @@ export default function ProfilePage() {
         bloodGroup,
         professionBn: finalProfBn,
         professionEn: finalProfEn,
+        countryBn: finalCountryBn,
+        countryEn: finalCountryEn,
         locationBn: locationBn.trim() || "জানা নেই",
         locationEn: locationBn.trim() || "Unknown",
         phone: phone.trim() || undefined,
@@ -244,6 +318,13 @@ export default function ProfilePage() {
             {lang === "bn" ? "পরিবর্তন" : "Change"}
           </button>
         </div>
+
+        {formError && (
+          <div className="bg-rose-50 border-b border-rose-200 px-5 py-2.5 flex items-center gap-2 text-xs font-semibold text-rose-700">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleCreateProfile} className="p-5 space-y-3.5 text-xs sm:text-sm">
           <div className="grid grid-cols-2 gap-3">
@@ -291,7 +372,8 @@ export default function ProfilePage() {
                 required={!nameEn}
                 value={nameBn}
                 onChange={(e) => setNameBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "বাংলা নাম..." : "Bangla name..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -303,7 +385,8 @@ export default function ProfilePage() {
                 type="text"
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "ইংরেজি নাম..." : "English name..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -335,36 +418,19 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                  {lang === "bn" ? "লিঙ্গ" : "Gender"}
-                </label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value as "male" | "female")}
-                  className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white"
-                >
-                  <option value="male">{lang === "bn" ? "পুরুষ" : "Male"}</option>
-                  <option value="female">{lang === "bn" ? "নারী" : "Female"}</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                  {lang === "bn" ? "রক্ত" : "Blood"}
-                </label>
-                <select
-                  value={bloodGroup}
-                  onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
-                  className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-bold text-rose-700"
-                >
-                  {BLOOD_GROUPS.map((bg) => (
-                    <option key={bg} value={bg}>
-                      {bg}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* লিঙ্গ (Sex / Gender) */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                {lang === "bn" ? "লিঙ্গ (Sex)" : "Sex / Gender"}
+              </label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as "male" | "female")}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+              >
+                <option value="male">{lang === "bn" ? "পুরুষ (Male)" : "Male"}</option>
+                <option value="female">{lang === "bn" ? "নারী (Female)" : "Female"}</option>
+              </select>
             </div>
 
             <div>
@@ -400,13 +466,60 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ঠিকানা" : "Location"}
+                {lang === "bn" ? "রক্তের গ্রুপ" : "Blood"}
+              </label>
+              <select
+                value={bloodGroup}
+                onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
+                className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-bold text-rose-700"
+              >
+                {BLOOD_GROUPS.map((bg) => (
+                  <option key={bg} value={bg}>
+                    {bg}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* বর্তমান দেশ / Present Country */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                {lang === "bn" ? "বর্তমান দেশ" : "Present Country"}
+              </label>
+              <div className="flex gap-1.5">
+                <select
+                  value={countrySelect}
+                  onChange={(e) => setCountrySelect(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.bn} value={c.bn}>
+                      {lang === "bn" ? c.bn : c.en}
+                    </option>
+                  ))}
+                </select>
+                {countrySelect === "অন্যান্য (লিখুন)" && (
+                  <input
+                    type="text"
+                    value={countryCustom}
+                    onChange={(e) => setCountryCustom(e.target.value)}
+                    placeholder={lang === "bn" ? "দেশের নাম..." : "Country..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                {lang === "bn" ? "ঠিকানা / শহর" : "City / Location"}
               </label>
               <input
                 type="text"
                 value={locationBn}
                 onChange={(e) => setLocationBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "যেমন: ঢাকা, সিলেট..." : "e.g. Dhaka..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -443,14 +556,26 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ফোন" : "Phone"}
+                {lang === "bn" ? "ফোন (শুধু সংখ্যা)" : "Phone (Digits only)"}
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9+]*"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                placeholder={lang === "bn" ? "যেমন: 01712345678" : "e.g. +8801712345678"}
+                className={`w-full px-3 py-2 rounded-xl border ${
+                  phoneError ? "border-rose-400 bg-rose-50/40" : "border-stone-200"
+                } focus:outline-none focus:ring-1 ${
+                  phoneError ? "focus:ring-rose-500" : "focus:ring-emerald-600"
+                }`}
               />
+              {phoneError && (
+                <p className="text-[10px] text-rose-600 font-medium mt-1">
+                  {phoneError}
+                </p>
+              )}
             </div>
 
             <div className="col-span-2">
@@ -503,7 +628,7 @@ export default function ProfilePage() {
                   className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white disabled:opacity-50"
                 >
                   <option value="">{lang === "bn" ? "তারিখ" : "Day"}</option>
-                  {DAYS.map((d) => (
+                  {daysList.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
@@ -546,9 +671,12 @@ export default function ProfilePage() {
             G{currentUserProfile.generation}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
               <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-400/20 text-amber-300">
                 @{currentUserProfile.username || currentUsername}
+              </span>
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-white/15 text-stone-200">
+                {currentUserProfile.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
               </span>
               {branch && (
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-800 text-emerald-100">
@@ -610,6 +738,15 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex items-center gap-2.5 p-3 rounded-xl bg-stone-50 border border-stone-100">
+            <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+            <span className="font-semibold text-stone-800 truncate">
+              {lang === "bn"
+                ? currentUserProfile.countryBn || "বাংলাদেশ"
+                : currentUserProfile.countryEn || "Bangladesh"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-stone-50 border border-stone-100">
             <MapPin className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <span className="font-semibold text-stone-800 truncate">
               {lang === "bn"
@@ -644,7 +781,7 @@ export default function ProfilePage() {
           )}
 
           {currentUserProfile.phone && (
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-950">
+            <div className="col-span-2 sm:col-span-3 flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 font-bold text-emerald-950">
               <Phone className="w-4 h-4 text-emerald-700 flex-shrink-0" />
               <span className="truncate">{currentUserProfile.phone}</span>
             </div>

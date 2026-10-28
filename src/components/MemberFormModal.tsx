@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, UserPlus } from "lucide-react";
+import { X, Save, UserPlus, AlertCircle } from "lucide-react";
 import { BloodGroup, FamilyBranch, FamilyMember, Language } from "@/types/family";
 
 interface MemberFormModalProps {
@@ -27,6 +27,24 @@ const BLOOD_GROUPS: BloodGroup[] = [
   "Unknown",
 ];
 
+export const COUNTRY_OPTIONS = [
+  { bn: "বাংলাদেশ", en: "Bangladesh" },
+  { bn: "যুক্তরাজ্য (ইউকে)", en: "United Kingdom (UK)" },
+  { bn: "যুক্তরাষ্ট্র (ইউএসএ)", en: "United States (USA)" },
+  { bn: "সৌদি আরব", en: "Saudi Arabia" },
+  { bn: "সংযুক্ত আরব আমিরাত (ইউএই)", en: "UAE" },
+  { bn: "কাতার", en: "Qatar" },
+  { bn: "কুয়েত", en: "Kuwait" },
+  { bn: "ওমান", en: "Oman" },
+  { bn: "বাহরাইন", en: "Bahrain" },
+  { bn: "মালয়েশিয়া", en: "Malaysia" },
+  { bn: "সিঙ্গাপুর", en: "Singapore" },
+  { bn: "কানাডা", en: "Canada" },
+  { bn: "অস্ট্রেলিয়া", en: "Australia" },
+  { bn: "ইতালি", en: "Italy" },
+  { bn: "অন্যান্য (লিখুন)", en: "Other (Type)" },
+];
+
 const PROFESSION_OPTIONS = [
   { bn: "গৃহিণী", en: "Housewife" },
   { bn: "কৃষক", en: "Farmer" },
@@ -43,20 +61,19 @@ const PROFESSION_OPTIONS = [
 
 const YEARS = Array.from({ length: 2026 - 1850 + 1 }, (_, i) => String(2026 - i));
 const MONTHS = [
-  { val: "01", bn: "০১ (জানুয়ারি)", en: "01 (Jan)" },
-  { val: "02", bn: "০২ (ফেব্রুয়ারি)", en: "02 (Feb)" },
-  { val: "03", bn: "০৩ (মার্চ)", en: "03 (Mar)" },
-  { val: "04", bn: "০৪ (এপ্রিল)", en: "04 (Apr)" },
-  { val: "05", bn: "০৫ (মে)", en: "05 (May)" },
-  { val: "06", bn: "০৬ (জুন)", en: "06 (Jun)" },
-  { val: "07", bn: "০৭ (জুলাই)", en: "07 (Jul)" },
-  { val: "08", bn: "০৮ (আগস্ট)", en: "08 (Aug)" },
-  { val: "09", bn: "০৯ (সেপ্টেম্বর)", en: "09 (Sep)" },
-  { val: "10", bn: "১০ (অক্টোবর)", en: "10 (Oct)" },
-  { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)" },
-  { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)" },
+  { val: "01", bn: "০১ (জানুয়ারি)", en: "01 (Jan)", days: 31 },
+  { val: "02", bn: "০২ (ফেব্রুয়ারি)", en: "02 (Feb)", days: 29 },
+  { val: "03", bn: "০৩ (মার্চ)", en: "03 (Mar)", days: 31 },
+  { val: "04", bn: "০৪ (এপ্রিল)", en: "04 (Apr)", days: 30 },
+  { val: "05", bn: "০৫ (মে)", en: "05 (May)", days: 31 },
+  { val: "06", bn: "০৬ (জুন)", en: "06 (Jun)", days: 30 },
+  { val: "07", bn: "০৭ (জুলাই)", en: "07 (Jul)", days: 31 },
+  { val: "08", bn: "০৮ (আগস্ট)", en: "08 (Aug)", days: 31 },
+  { val: "09", bn: "০৯ (সেপ্টেম্বর)", en: "09 (Sep)", days: 30 },
+  { val: "10", bn: "১০ (অক্টোবর)", en: "10 (Oct)", days: 31 },
+  { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)", days: 30 },
+  { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)", days: 31 },
 ];
-const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
 
 export default function MemberFormModal({
   isOpen,
@@ -75,7 +92,9 @@ export default function MemberFormModal({
   const [nicknameMode, setNicknameMode] = useState<"none" | "unknown" | "custom">("none");
   const [nicknameBn, setNicknameBn] = useState("");
 
+  // Sex / Gender
   const [gender, setGender] = useState<"male" | "female">("male");
+
   const [parentId, setParentId] = useState<string>("");
   const [branchId, setBranchId] = useState<string>("root");
   const [generation, setGeneration] = useState<number>(1);
@@ -88,6 +107,10 @@ export default function MemberFormModal({
   const [professionSelect, setProfessionSelect] = useState<string>("গৃহিণী");
   const [professionCustom, setProfessionCustom] = useState<string>("");
 
+  // Present Country
+  const [countrySelect, setCountrySelect] = useState<string>("বাংলাদেশ");
+  const [countryCustom, setCountryCustom] = useState<string>("");
+
   // Birth: Year -> Month -> Day (or "unknown")
   const [birthYearPart, setBirthYearPart] = useState<string>("unknown");
   const [birthMonthPart, setBirthMonthPart] = useState<string>("");
@@ -98,6 +121,10 @@ export default function MemberFormModal({
   const [locationBn, setLocationBn] = useState("");
   const [phone, setPhone] = useState("");
 
+  // Validation Errors
+  const [formError, setFormError] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string>("");
+
   const getNextChildBranch = (pid: string) => {
     const count = existingMembers.filter((m) => m.parentId === pid).length;
     const nextIdx = Math.min(count + 1, 10);
@@ -105,6 +132,9 @@ export default function MemberFormModal({
   };
 
   useEffect(() => {
+    setFormError("");
+    setPhoneError("");
+
     if (editingMember) {
       setNameBn(editingMember.nameBn);
       setNameEn(editingMember.nameEn);
@@ -121,7 +151,7 @@ export default function MemberFormModal({
         setNicknameBn(editingMember.nicknameBn);
       }
 
-      setGender(editingMember.gender);
+      setGender(editingMember.gender || "male");
       setParentId(editingMember.parentId || "");
       setBranchId(editingMember.branchId);
       setGeneration(editingMember.generation);
@@ -147,6 +177,21 @@ export default function MemberFormModal({
       } else {
         setProfessionSelect("জানা নেই");
         setProfessionCustom("");
+      }
+
+      // Parse Present Country
+      const matchedCountry = COUNTRY_OPTIONS.find(
+        (c) => c.bn === editingMember.countryBn || c.en === editingMember.countryEn
+      );
+      if (matchedCountry) {
+        setCountrySelect(matchedCountry.bn);
+        setCountryCustom("");
+      } else if (editingMember.countryBn && editingMember.countryBn !== "বাংলাদেশ") {
+        setCountrySelect("custom");
+        setCountryCustom(editingMember.countryBn);
+      } else {
+        setCountrySelect("বাংলাদেশ");
+        setCountryCustom("");
       }
 
       // Parse Birth Date (YYYY-MM-DD or YYYY or জানা নেই)
@@ -179,6 +224,8 @@ export default function MemberFormModal({
       setSpouseNameBn("");
       setProfessionSelect("শিক্ষার্থী");
       setProfessionCustom("");
+      setCountrySelect("বাংলাদেশ");
+      setCountryCustom("");
       setBirthYearPart("unknown");
       setBirthMonthPart("");
       setBirthDayPart("");
@@ -200,6 +247,8 @@ export default function MemberFormModal({
       setSpouseNameBn("");
       setProfessionSelect("গৃহিণী");
       setProfessionCustom("");
+      setCountrySelect("বাংলাদেশ");
+      setCountryCustom("");
       setBirthYearPart("unknown");
       setBirthMonthPart("");
       setBirthDayPart("");
@@ -224,10 +273,52 @@ export default function MemberFormModal({
     }
   };
 
+  // Phone input validator: strictly allow digits and optional leading +
+  const handlePhoneChange = (val: string) => {
+    // Keep only digits and optional leading +
+    let cleaned = val.replace(/[^\d+]/g, "");
+    if (cleaned.indexOf("+") > 0) {
+      cleaned = cleaned[0] + cleaned.slice(1).replace(/\+/g, "");
+    }
+    setPhone(cleaned);
+
+    const digitCount = cleaned.replace(/\D/g, "").length;
+    if (cleaned && digitCount < 6) {
+      setPhoneError(lang === "bn" ? "ফোন নম্বর কমপক্ষে ৬ ডিজিট হতে হবে" : "Phone must be at least 6 digits");
+    } else if (digitCount > 15) {
+      setPhoneError(lang === "bn" ? "ফোন নম্বর সর্বোচ্চ ১৫ ডিজিট হতে পারে" : "Phone max 15 digits");
+    } else {
+      setPhoneError("");
+    }
+  };
+
+  // Compute number of days in selected month
+  const selectedMonthObj = MONTHS.find((m) => m.val === birthMonthPart);
+  const maxDays = selectedMonthObj?.days || 31;
+  const daysList = Array.from({ length: maxDays }, (_, i) => String(i + 1).padStart(2, "0"));
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+
+    // Validate name
+    if (!nameBn.trim() && !nameEn.trim()) {
+      setFormError(lang === "bn" ? "অনুগ্রহ করে অন্তত একটি নাম (বাংলা বা ইংরেজি) লিখুন" : "Please enter at least one name");
+      return;
+    }
+
+    // Validate phone if provided
+    if (phone.trim()) {
+      const digitCount = phone.replace(/\D/g, "").length;
+      if (digitCount < 6 || digitCount > 15) {
+        setPhoneError(lang === "bn" ? "সঠিক ফোন নম্বর দিন (৬ থেকে ১৫ ডিজিট)" : "Please enter a valid phone (6-15 digits)");
+        setFormError(lang === "bn" ? "ফোন নম্বরটি সঠিক নয়" : "Invalid phone number");
+        return;
+      }
+    }
+
     const finalNameBn = nameBn.trim() || nameEn.trim() || "সদস্য";
     const finalNameEn = nameEn.trim() || nameBn.trim() || "Member";
 
@@ -266,6 +357,17 @@ export default function MemberFormModal({
         ? professionCustom.trim() || "Unknown"
         : matchedProf?.en || "Unknown";
 
+    // Present Country value
+    const matchedCountry = COUNTRY_OPTIONS.find((c) => c.bn === countrySelect);
+    const finalCountryBn =
+      countrySelect === "custom"
+        ? countryCustom.trim() || "বাংলাদেশ"
+        : matchedCountry?.bn || "বাংলাদেশ";
+    const finalCountryEn =
+      countrySelect === "custom"
+        ? countryCustom.trim() || "Bangladesh"
+        : matchedCountry?.en || "Bangladesh";
+
     // Birth date value (Year -> Month -> Day)
     let finalBirth = "জানা নেই";
     if (birthYearPart !== "unknown") {
@@ -296,6 +398,8 @@ export default function MemberFormModal({
       bloodGroup,
       professionBn: finalProfBn,
       professionEn: finalProfEn,
+      countryBn: finalCountryBn,
+      countryEn: finalCountryEn,
       locationBn: locationBn.trim() || "জানা নেই",
       locationEn: locationBn.trim() || "Unknown",
       phone: phone.trim() || undefined,
@@ -312,19 +416,19 @@ export default function MemberFormModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col"
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col"
       >
-        <div className="bg-emerald-950 px-5 py-3.5 text-white flex items-center justify-between">
+        <div className="bg-emerald-950 px-5 py-3.5 text-white flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
             <UserPlus className="w-4 h-4 text-amber-400" />
             <span>
               {editingMember
                 ? lang === "bn"
-                  ? "সম্পাদনা"
-                  : "Edit"
+                  ? "সদস্য তথ্য সম্পাদনা"
+                  : "Edit Member"
                 : lang === "bn"
-                ? "নতুন সদস্য"
-                : "New Member"}
+                ? "নতুন সদস্য যোগ"
+                : "Add New Member"}
             </span>
           </div>
           <button
@@ -335,8 +439,16 @@ export default function MemberFormModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3 overflow-y-auto text-xs sm:text-sm">
-          <div className="grid grid-cols-2 gap-2.5">
+        {formError && (
+          <div className="bg-rose-50 border-b border-rose-200 px-5 py-2.5 flex items-center gap-2 text-xs font-semibold text-rose-700">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto text-xs sm:text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            {/* পিতা / Parent */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "পিতা" : "Parent"}
@@ -355,6 +467,7 @@ export default function MemberFormModal({
               </select>
             </div>
 
+            {/* শাখা / Child Order */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "শাখা (সন্তান ক্রম)" : "Child Order"}
@@ -372,6 +485,7 @@ export default function MemberFormModal({
               </select>
             </div>
 
+            {/* নাম (বাংলা) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "নাম (বাংলা) *" : "Name (BN) *"}
@@ -381,10 +495,12 @@ export default function MemberFormModal({
                 required={!nameEn}
                 value={nameBn}
                 onChange={(e) => setNameBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "বাংলা নাম..." : "Bangla name..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
+            {/* নাম (ইংরেজি) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "নাম (ইংরেজি)" : "Name (EN)"}
@@ -393,7 +509,8 @@ export default function MemberFormModal({
                 type="text"
                 value={nameEn}
                 onChange={(e) => setNameEn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "ইংরেজি নাম..." : "English name..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -426,20 +543,18 @@ export default function MemberFormModal({
               </div>
             </div>
 
+            {/* লিঙ্গ (Sex / Gender) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "রক্ত" : "Blood"}
+                {lang === "bn" ? "লিঙ্গ (Sex)" : "Sex / Gender"}
               </label>
               <select
-                value={bloodGroup}
-                onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white font-bold text-rose-700"
+                value={gender}
+                onChange={(e) => setGender(e.target.value as "male" | "female")}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white font-semibold text-stone-800"
               >
-                {BLOOD_GROUPS.map((bg) => (
-                  <option key={bg} value={bg}>
-                    {bg}
-                  </option>
-                ))}
+                <option value="male">{lang === "bn" ? "পুরুষ (Male)" : "Male"}</option>
+                <option value="female">{lang === "bn" ? "নারী (Female)" : "Female"}</option>
               </select>
             </div>
 
@@ -475,15 +590,64 @@ export default function MemberFormModal({
               </div>
             </div>
 
+            {/* রক্ত / Blood */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ঠিকানা" : "Location"}
+                {lang === "bn" ? "রক্তের গ্রুপ" : "Blood Group"}
+              </label>
+              <select
+                value={bloodGroup}
+                onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white font-bold text-rose-700"
+              >
+                {BLOOD_GROUPS.map((bg) => (
+                  <option key={bg} value={bg}>
+                    {bg}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* বর্তমান দেশ / Present Country */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                {lang === "bn" ? "বর্তমান দেশ" : "Present Country"}
+              </label>
+              <div className="flex gap-1.5">
+                <select
+                  value={countrySelect}
+                  onChange={(e) => setCountrySelect(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.bn} value={c.bn}>
+                      {lang === "bn" ? c.bn : c.en}
+                    </option>
+                  ))}
+                </select>
+                {countrySelect === "অন্যান্য (লিখুন)" && (
+                  <input
+                    type="text"
+                    value={countryCustom}
+                    onChange={(e) => setCountryCustom(e.target.value)}
+                    placeholder={lang === "bn" ? "দেশের নাম..." : "Country..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* ঠিকানা / City or Address */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                {lang === "bn" ? "ঠিকানা / শহর" : "City / Address"}
               </label>
               <input
                 type="text"
                 value={locationBn}
                 onChange={(e) => setLocationBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                placeholder={lang === "bn" ? "যেমন: ঢাকা, সিলেট, লন্ডন..." : "e.g. Dhaka, London..."}
+                className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
             </div>
 
@@ -512,23 +676,36 @@ export default function MemberFormModal({
                     type="text"
                     value={spouseNameBn}
                     onChange={(e) => setSpouseNameBn(e.target.value)}
-                    placeholder={lang === "bn" ? "নাম..." : "Name..."}
+                    placeholder={lang === "bn" ? "জীবনসঙ্গীর নাম..." : "Spouse name..."}
                     className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
                   />
                 )}
               </div>
             </div>
 
+            {/* ফোন (Phone - Validated Digits Only) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ফোন" : "Phone"}
+                {lang === "bn" ? "ফোন (শুধু সংখ্যা)" : "Phone (Digits only)"}
               </label>
               <input
-                type="text"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9+]*"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                placeholder={lang === "bn" ? "যেমন: 01712345678" : "e.g. +8801712345678"}
+                className={`w-full px-3 py-2 rounded-xl border ${
+                  phoneError ? "border-rose-400 bg-rose-50/40" : "border-stone-200"
+                } focus:outline-none focus:ring-1 ${
+                  phoneError ? "focus:ring-rose-500" : "focus:ring-emerald-600"
+                }`}
               />
+              {phoneError && (
+                <p className="text-[10px] text-rose-600 font-medium mt-1">
+                  {phoneError}
+                </p>
+              )}
             </div>
 
             {/* জন্ম (Year -> Month -> Day or Unknown) */}
@@ -582,7 +759,7 @@ export default function MemberFormModal({
                   className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white disabled:opacity-50"
                 >
                   <option value="">{lang === "bn" ? "তারিখ" : "Day"}</option>
-                  {DAYS.map((d) => (
+                  {daysList.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
@@ -591,6 +768,7 @@ export default function MemberFormModal({
               </div>
             </div>
 
+            {/* অবস্থা / Status */}
             <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "অবস্থা" : "Status"}
@@ -610,13 +788,13 @@ export default function MemberFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer hover:bg-stone-200"
             >
               {lang === "bn" ? "বাতিল" : "Cancel"}
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold text-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold text-xs cursor-pointer hover:bg-emerald-800 shadow"
             >
               <Save className="w-3.5 h-3.5" />
               {lang === "bn" ? "সংরক্ষণ" : "Save"}

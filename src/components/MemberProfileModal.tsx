@@ -15,6 +15,7 @@ import {
   Edit3,
   Trash2,
   ArrowUpRight,
+  Globe,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language } from "@/types/family";
 
@@ -73,12 +74,15 @@ export default function MemberProfileModal({
               G{member.generation}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 mb-1">
+              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                 {branch && (
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-800 text-emerald-100">
                     {lang === "bn" ? branch.nameBn : branch.nameEn}
                   </span>
                 )}
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/20 text-stone-100">
+                  {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
+                </span>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/15 text-amber-200">
                   {member.isAlive ? (lang === "bn" ? "জীবিত" : "Living") : lang === "bn" ? "প্রয়াত" : "Late"}
                 </span>
@@ -102,6 +106,15 @@ export default function MemberProfileModal({
               <Briefcase className="w-4 h-4 text-emerald-700 flex-shrink-0" />
               <span className="font-semibold text-stone-800 truncate">
                 {lang === "bn" ? member.professionBn : member.professionEn}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
+              <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <span className="font-semibold text-stone-800 truncate">
+                {lang === "bn"
+                  ? member.countryBn || "বাংলাদেশ"
+                  : member.countryEn || "Bangladesh"}
               </span>
             </div>
 

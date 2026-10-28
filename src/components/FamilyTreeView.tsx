@@ -250,7 +250,9 @@ export default function FamilyTreeView({
           }`}
         >
           <div className={`px-3 py-1 rounded-t-[14px] flex items-center justify-between text-[11px] font-bold ${style.header}`}>
-            <span>G{member.generation}</span>
+            <span>
+              G{member.generation} • {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
+            </span>
             <span>
               {member.isAlive
                 ? lang === "bn"
@@ -283,7 +285,9 @@ export default function FamilyTreeView({
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
                 <span className="truncate">
-                  {lang === "bn" ? member.locationBn : member.locationEn}
+                  {lang === "bn"
+                    ? [member.locationBn, member.countryBn].filter((x) => x && x !== "জানা নেই" && x !== "-").join(", ") || member.locationBn
+                    : [member.locationEn, member.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || member.locationEn}
                 </span>
               </div>
             </div>

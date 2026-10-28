@@ -40,6 +40,8 @@ export default function MemberDirectory({
           m.nicknameBn?.toLowerCase().includes(q) ||
           m.professionBn.toLowerCase().includes(q) ||
           m.professionEn.toLowerCase().includes(q) ||
+          m.countryBn?.toLowerCase().includes(q) ||
+          m.countryEn?.toLowerCase().includes(q) ||
           m.locationBn.toLowerCase().includes(q) ||
           m.locationEn.toLowerCase().includes(q)
         );
@@ -135,9 +137,14 @@ export default function MemberDirectory({
               className="bg-white rounded-2xl border border-stone-200 hover:border-emerald-500 p-4 shadow-sm transition cursor-pointer space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900">
-                  G{m.generation}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900">
+                    G{m.generation}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-stone-700">
+                    {m.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
+                  </span>
+                </div>
                 <div className="flex items-center gap-1.5">
                   {m.bloodGroup !== "Unknown" && (
                     <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700">
@@ -168,7 +175,11 @@ export default function MemberDirectory({
                 </div>
                 <div className="flex items-center gap-1.5 truncate">
                   <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                  <span className="truncate">{lang === "bn" ? m.locationBn : m.locationEn}</span>
+                  <span className="truncate">
+                    {lang === "bn"
+                      ? [m.locationBn, m.countryBn].filter((x) => x && x !== "জানা নেই" && x !== "-").join(", ") || m.locationBn
+                      : [m.locationEn, m.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || m.locationEn}
+                  </span>
                 </div>
                 {m.phone && (
                   <div className="flex items-center gap-1.5 text-stone-700 font-medium">
