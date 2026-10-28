@@ -147,11 +147,40 @@ export default function MemberProfileModal({
             )}
 
             {(member.spouseNameBn || member.spouseNameEn) && (
-              <div className="col-span-2 flex items-center gap-2.5 p-2.5 rounded-xl bg-rose-50/60 border border-rose-100">
-                <Heart className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                <span className="font-semibold text-stone-800 truncate">
-                  {lang === "bn" ? member.spouseNameBn : member.spouseNameEn}
-                </span>
+              <div className="col-span-2 p-3 rounded-2xl bg-rose-50/60 border border-rose-100 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-rose-700 font-bold text-xs">
+                  <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                  <span>{lang === "bn" ? "জীবনসঙ্গী (স্পাউস)" : "Spouse"}</span>
+                </div>
+                <div className="pl-5 text-xs text-stone-700 space-y-1">
+                  <p className="font-bold text-stone-900 text-sm">
+                    {lang === "bn" ? member.spouseNameBn : member.spouseNameEn}
+                  </p>
+                  {(member.spouseProfessionBn || member.spouseProfessionEn) && (
+                    <p className="text-stone-600 flex items-center gap-1">
+                      <span>💼</span>
+                      <span>{lang === "bn" ? member.spouseProfessionBn : member.spouseProfessionEn}</span>
+                    </p>
+                  )}
+                  {(member.spouseLocationBn || member.spouseLocationEn) && (
+                    <p className="text-stone-600 flex items-center gap-1">
+                      <span>📍</span>
+                      <span>
+                        {lang === "bn"
+                          ? `ঠিকানা / বাপের বাড়ি: ${member.spouseLocationBn}`
+                          : `Address: ${member.spouseLocationEn}`}
+                      </span>
+                    </p>
+                  )}
+                  {member.spousePhone && (
+                    <p className="text-stone-600 flex items-center gap-1">
+                      <span>📞</span>
+                      <a href={`tel:${member.spousePhone}`} className="text-emerald-800 font-bold hover:underline">
+                        {member.spousePhone}
+                      </a>
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -240,7 +269,7 @@ export default function MemberProfileModal({
           <button
             onClick={() => onDeleteMember(member.id)}
             className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 cursor-pointer"
-            title={lang === "bn" ? "মুছুন" : "Delete"}
+            title={lang === "bn" ? "ডিলিট" : "Delete"}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -253,7 +282,7 @@ export default function MemberProfileModal({
             className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-stone-300 text-xs font-bold text-stone-800 cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            {lang === "bn" ? "সম্পাদনা" : "Edit"}
+            {lang === "bn" ? "এডিট" : "Edit"}
           </button>
 
           <button
@@ -264,7 +293,7 @@ export default function MemberProfileModal({
             className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            {lang === "bn" ? "সন্তান" : "Child"}
+            {lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
           </button>
         </div>
       </div>

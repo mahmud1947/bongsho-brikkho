@@ -129,7 +129,7 @@ export default function HeritageAndGallery({
               type="submit"
               className="px-4 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold cursor-pointer"
             >
-              {lang === "bn" ? "সংরক্ষণ" : "Save"}
+              {lang === "bn" ? "সেইভ" : "Save"}
             </button>
           </form>
         )}
@@ -231,7 +231,7 @@ export default function HeritageAndGallery({
                 type="submit"
                 className="px-4 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold cursor-pointer"
               >
-                {lang === "bn" ? "সংরক্ষণ" : "Save"}
+                {lang === "bn" ? "সেইভ" : "Save"}
               </button>
             </div>
           </form>

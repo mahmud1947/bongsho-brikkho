@@ -61,7 +61,7 @@ export default function MemberDirectory({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={lang === "bn" ? "খুঁজুন..." : "Search..."}
+              placeholder={lang === "bn" ? "সার্চ..." : "Search..."}
               className="w-full pl-9 pr-3 py-2 rounded-xl border border-stone-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
           </div>
@@ -125,7 +125,7 @@ export default function MemberDirectory({
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-sm font-bold shadow cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
-            <span>{lang === "bn" ? "যোগ" : "Add"}</span>
+            <span>{lang === "bn" ? "মেম্বার অ্যাড" : "Add"}</span>
           </button>
         </div>
       ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, UserPlus, AlertCircle } from "lucide-react";
+import { X, Save, UserPlus, AlertCircle, Heart } from "lucide-react";
 import { BloodGroup, FamilyBranch, FamilyMember, Language } from "@/types/family";
 
 interface MemberFormModalProps {
@@ -42,7 +42,7 @@ export const COUNTRY_OPTIONS = [
   { bn: "কানাডা", en: "Canada" },
   { bn: "অস্ট্রেলিয়া", en: "Australia" },
   { bn: "ইতালি", en: "Italy" },
-  { bn: "অন্যান্য (লিখুন)", en: "Other (Type)" },
+  { bn: "আদার (টাইপ করুন)", en: "Other (Type)" },
 ];
 
 const PROFESSION_OPTIONS = [
@@ -99,9 +99,12 @@ export default function MemberFormModal({
   const [branchId, setBranchId] = useState<string>("root");
   const [generation, setGeneration] = useState<number>(1);
 
-  // Marital status
+  // Marital status & Spouse Details
   const [maritalStatus, setMaritalStatus] = useState<"married" | "unmarried">("unmarried");
   const [spouseNameBn, setSpouseNameBn] = useState("");
+  const [spouseProfessionBn, setSpouseProfessionBn] = useState("");
+  const [spouseLocationBn, setSpouseLocationBn] = useState("");
+  const [spousePhone, setSpousePhone] = useState("");
 
   // Profession: preset or "custom"
   const [professionSelect, setProfessionSelect] = useState<string>("গৃহিণী");
@@ -156,13 +159,16 @@ export default function MemberFormModal({
       setBranchId(editingMember.branchId);
       setGeneration(editingMember.generation);
 
-      // Parse Marital Status
+      // Parse Marital Status & Spouse Details
       const isUnmarried =
         !editingMember.spouseNameBn ||
         editingMember.spouseNameBn === "অবিবাহিত" ||
         editingMember.spouseNameBn === "Unmarried";
       setMaritalStatus(isUnmarried ? "unmarried" : "married");
       setSpouseNameBn(isUnmarried ? "" : editingMember.spouseNameBn || "");
+      setSpouseProfessionBn(editingMember.spouseProfessionBn || "");
+      setSpouseLocationBn(editingMember.spouseLocationBn || "");
+      setSpousePhone(editingMember.spousePhone || "");
 
       // Parse Profession
       const matchedProf = PROFESSION_OPTIONS.find(
@@ -222,6 +228,9 @@ export default function MemberFormModal({
       setGeneration(defaultParent.generation + 1);
       setMaritalStatus("unmarried");
       setSpouseNameBn("");
+      setSpouseProfessionBn("");
+      setSpouseLocationBn("");
+      setSpousePhone("");
       setProfessionSelect("শিক্ষার্থী");
       setProfessionCustom("");
       setCountrySelect("বাংলাদেশ");
@@ -245,6 +254,9 @@ export default function MemberFormModal({
       setGeneration(first ? first.generation + 1 : 1);
       setMaritalStatus("unmarried");
       setSpouseNameBn("");
+      setSpouseProfessionBn("");
+      setSpouseLocationBn("");
+      setSpousePhone("");
       setProfessionSelect("গৃহিণী");
       setProfessionCustom("");
       setCountrySelect("বাংলাদেশ");
@@ -275,7 +287,6 @@ export default function MemberFormModal({
 
   // Phone input validator: strictly allow digits and optional leading +
   const handlePhoneChange = (val: string) => {
-    // Keep only digits and optional leading +
     let cleaned = val.replace(/[^\d+]/g, "");
     if (cleaned.indexOf("+") > 0) {
       cleaned = cleaned[0] + cleaned.slice(1).replace(/\+/g, "");
@@ -292,7 +303,6 @@ export default function MemberFormModal({
     }
   };
 
-  // Compute number of days in selected month
   const selectedMonthObj = MONTHS.find((m) => m.val === birthMonthPart);
   const maxDays = selectedMonthObj?.days || 31;
   const daysList = Array.from({ length: maxDays }, (_, i) => String(i + 1).padStart(2, "0"));
@@ -303,13 +313,11 @@ export default function MemberFormModal({
     e.preventDefault();
     setFormError("");
 
-    // Validate name
     if (!nameBn.trim() && !nameEn.trim()) {
-      setFormError(lang === "bn" ? "অনুগ্রহ করে অন্তত একটি নাম (বাংলা বা ইংরেজি) লিখুন" : "Please enter at least one name");
+      setFormError(lang === "bn" ? "দয়া করে অন্তত একটি নাম (বাংলা বা ইংরেজি) লিখুন" : "Please enter at least one name");
       return;
     }
 
-    // Validate phone if provided
     if (phone.trim()) {
       const digitCount = phone.replace(/\D/g, "").length;
       if (digitCount < 6 || digitCount > 15) {
@@ -319,10 +327,9 @@ export default function MemberFormModal({
       }
     }
 
-    const finalNameBn = nameBn.trim() || nameEn.trim() || "সদস্য";
+    const finalNameBn = nameBn.trim() || nameEn.trim() || "মেম্বার";
     const finalNameEn = nameEn.trim() || nameBn.trim() || "Member";
 
-    // Nickname value
     const finalNickBn =
       nicknameMode === "none"
         ? "নেই"
@@ -336,7 +343,6 @@ export default function MemberFormModal({
         ? "Unknown"
         : nicknameBn.trim() || "None";
 
-    // Spouse value
     const finalSpouseBn =
       maritalStatus === "unmarried"
         ? "অবিবাহিত"
@@ -346,7 +352,6 @@ export default function MemberFormModal({
         ? "Unmarried"
         : spouseNameBn.trim() || "Married";
 
-    // Profession value
     const matchedProf = PROFESSION_OPTIONS.find((p) => p.bn === professionSelect);
     const finalProfBn =
       professionSelect === "custom"
@@ -357,7 +362,6 @@ export default function MemberFormModal({
         ? professionCustom.trim() || "Unknown"
         : matchedProf?.en || "Unknown";
 
-    // Present Country value
     const matchedCountry = COUNTRY_OPTIONS.find((c) => c.bn === countrySelect);
     const finalCountryBn =
       countrySelect === "custom"
@@ -368,7 +372,6 @@ export default function MemberFormModal({
         ? countryCustom.trim() || "Bangladesh"
         : matchedCountry?.en || "Bangladesh";
 
-    // Birth date value (Year -> Month -> Day)
     let finalBirth = "জানা নেই";
     if (birthYearPart !== "unknown") {
       finalBirth = birthYearPart;
@@ -393,6 +396,11 @@ export default function MemberFormModal({
       parentId: parentId || null,
       spouseNameBn: finalSpouseBn,
       spouseNameEn: finalSpouseEn,
+      spouseProfessionBn: spouseProfessionBn.trim() || undefined,
+      spouseProfessionEn: spouseProfessionBn.trim() || undefined,
+      spouseLocationBn: spouseLocationBn.trim() || undefined,
+      spouseLocationEn: spouseLocationBn.trim() || undefined,
+      spousePhone: spousePhone.trim() || undefined,
       birthYear: finalBirth,
       isAlive,
       bloodGroup,
@@ -424,10 +432,10 @@ export default function MemberFormModal({
             <span>
               {editingMember
                 ? lang === "bn"
-                  ? "সদস্য তথ্য সম্পাদনা"
+                  ? "মেম্বার তথ্য এডিট"
                   : "Edit Member"
                 : lang === "bn"
-                ? "নতুন সদস্য যোগ"
+                ? "নতুন মেম্বার অ্যাড"
                 : "Add New Member"}
             </span>
           </div>
@@ -448,10 +456,10 @@ export default function MemberFormModal({
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 overflow-y-auto text-xs sm:text-sm">
           <div className="grid grid-cols-2 gap-3">
-            {/* পিতা / Parent */}
+            {/* পিতা (প্যারেন্ট) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "পিতা" : "Parent"}
+                {lang === "bn" ? "পিতা (প্যারেন্ট)" : "Parent"}
               </label>
               <select
                 value={parentId}
@@ -467,10 +475,10 @@ export default function MemberFormModal({
               </select>
             </div>
 
-            {/* শাখা / Child Order */}
+            {/* শাখা (চাইল্ড ক্রম) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "শাখা (সন্তান ক্রম)" : "Child Order"}
+                {lang === "bn" ? "শাখা (চাইল্ড ক্রম)" : "Child Order"}
               </label>
               <select
                 value={branchId}
@@ -514,10 +522,10 @@ export default function MemberFormModal({
               />
             </div>
 
-            {/* ডাকনাম (Nickname with Default Options) */}
+            {/* ডাকনাম (নিকনেম) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ডাকনাম" : "Nickname"}
+                {lang === "bn" ? "ডাকনাম (নিকনেম)" : "Nickname"}
               </label>
               <div className="flex gap-1.5">
                 <select
@@ -529,21 +537,21 @@ export default function MemberFormModal({
                 >
                   <option value="none">{lang === "bn" ? "নেই" : "None"}</option>
                   <option value="unknown">{lang === "bn" ? "জানা নেই" : "Unknown"}</option>
-                  <option value="custom">{lang === "bn" ? "আছে (লিখুন)" : "Custom"}</option>
+                  <option value="custom">{lang === "bn" ? "আছে (টাইপ করুন)" : "Custom"}</option>
                 </select>
                 {nicknameMode === "custom" && (
                   <input
                     type="text"
                     value={nicknameBn}
                     onChange={(e) => setNicknameBn(e.target.value)}
-                    placeholder={lang === "bn" ? "ডাকনাম..." : "Nickname..."}
+                    placeholder={lang === "bn" ? "নিকনেম..." : "Nickname..."}
                     className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
                   />
                 )}
               </div>
             </div>
 
-            {/* লিঙ্গ (Sex / Gender) */}
+            {/* লিঙ্গ (Sex) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "লিঙ্গ (Sex)" : "Sex / Gender"}
@@ -558,10 +566,10 @@ export default function MemberFormModal({
               </select>
             </div>
 
-            {/* পেশা (Profession Suggestions + Custom) */}
+            {/* পেশা (প্রফেশন) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "পেশা" : "Profession"}
+                {lang === "bn" ? "পেশা (প্রফেশন)" : "Profession"}
               </label>
               <div className="flex gap-1.5">
                 <select
@@ -575,7 +583,7 @@ export default function MemberFormModal({
                     </option>
                   ))}
                   <option value="custom">
-                    {lang === "bn" ? "অন্যান্য (লিখুন)" : "Other (Type)"}
+                    {lang === "bn" ? "আদার (টাইপ করুন)" : "Other (Type)"}
                   </option>
                 </select>
                 {professionSelect === "custom" && (
@@ -583,17 +591,17 @@ export default function MemberFormModal({
                     type="text"
                     value={professionCustom}
                     onChange={(e) => setProfessionCustom(e.target.value)}
-                    placeholder={lang === "bn" ? "পেশা..." : "Profession..."}
+                    placeholder={lang === "bn" ? "প্রফেশন..." : "Profession..."}
                     className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
                   />
                 )}
               </div>
             </div>
 
-            {/* রক্ত / Blood */}
+            {/* ব্লাড গ্রুপ */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "রক্তের গ্রুপ" : "Blood Group"}
+                {lang === "bn" ? "ব্লাড গ্রুপ" : "Blood Group"}
               </label>
               <select
                 value={bloodGroup}
@@ -608,10 +616,10 @@ export default function MemberFormModal({
               </select>
             </div>
 
-            {/* বর্তমান দেশ / Present Country */}
+            {/* প্রেজেন্ট কান্ট্রি */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "বর্তমান দেশ" : "Present Country"}
+                {lang === "bn" ? "প্রেজেন্ট কান্ট্রি" : "Present Country"}
               </label>
               <div className="flex gap-1.5">
                 <select
@@ -625,22 +633,22 @@ export default function MemberFormModal({
                     </option>
                   ))}
                 </select>
-                {countrySelect === "অন্যান্য (লিখুন)" && (
+                {countrySelect === "আদার (টাইপ করুন)" && (
                   <input
                     type="text"
                     value={countryCustom}
                     onChange={(e) => setCountryCustom(e.target.value)}
-                    placeholder={lang === "bn" ? "দেশের নাম..." : "Country..."}
+                    placeholder={lang === "bn" ? "কান্ট্রি..." : "Country..."}
                     className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
                   />
                 )}
               </div>
             </div>
 
-            {/* ঠিকানা / City or Address */}
+            {/* ঠিকানা / শহর */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ঠিকানা / শহর" : "City / Address"}
+                {lang === "bn" ? "ঠিকানা / সিটি" : "City / Address"}
               </label>
               <input
                 type="text"
@@ -651,42 +659,10 @@ export default function MemberFormModal({
               />
             </div>
 
-            {/* জীবনসঙ্গী (Marital Status + Spouse Name) */}
-            <div>
+            {/* মোবাইল / ফোন */}
+            <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "জীবনসঙ্গী" : "Spouse"}
-              </label>
-              <div className="flex gap-1.5">
-                <select
-                  value={maritalStatus}
-                  onChange={(e) =>
-                    setMaritalStatus(e.target.value as "married" | "unmarried")
-                  }
-                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
-                >
-                  <option value="unmarried">
-                    {lang === "bn" ? "অবিবাহিত" : "Unmarried"}
-                  </option>
-                  <option value="married">
-                    {lang === "bn" ? "বিবাহিত" : "Married"}
-                  </option>
-                </select>
-                {maritalStatus === "married" && (
-                  <input
-                    type="text"
-                    value={spouseNameBn}
-                    onChange={(e) => setSpouseNameBn(e.target.value)}
-                    placeholder={lang === "bn" ? "জীবনসঙ্গীর নাম..." : "Spouse name..."}
-                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* ফোন (Phone - Validated Digits Only) */}
-            <div>
-              <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ফোন (শুধু সংখ্যা)" : "Phone (Digits only)"}
+                {lang === "bn" ? "মোবাইল / ফোন (শুধু ডিজিট)" : "Mobile / Phone (Digits only)"}
               </label>
               <input
                 type="tel"
@@ -708,7 +684,88 @@ export default function MemberFormModal({
               )}
             </div>
 
-            {/* জন্ম (Year -> Month -> Day or Unknown) */}
+            {/* জীবনসঙ্গী (স্পাউস ডিটেইলস) */}
+            <div className="col-span-2 bg-stone-50/80 p-3 rounded-2xl border border-stone-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-stone-700">
+                  <Heart className="w-3.5 h-3.5 text-rose-500" />
+                  <span>{lang === "bn" ? "জীবনসঙ্গী (স্পাউস)" : "Spouse"}</span>
+                </label>
+                <select
+                  value={maritalStatus}
+                  onChange={(e) =>
+                    setMaritalStatus(e.target.value as "married" | "unmarried")
+                  }
+                  className="px-2.5 py-1 rounded-xl border border-stone-200 bg-white font-semibold text-xs"
+                >
+                  <option value="unmarried">
+                    {lang === "bn" ? "অবিবাহিত (Unmarried)" : "Unmarried"}
+                  </option>
+                  <option value="married">
+                    {lang === "bn" ? "বিবাহিত (Married)" : "Married"}
+                  </option>
+                </select>
+              </div>
+
+              {maritalStatus === "married" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-stone-200">
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 mb-1">
+                      {lang === "bn" ? "স্পাউসের নাম *" : "Spouse Name *"}
+                    </label>
+                    <input
+                      type="text"
+                      value={spouseNameBn}
+                      onChange={(e) => setSpouseNameBn(e.target.value)}
+                      placeholder={lang === "bn" ? "যেমন: লেবু বেগম..." : "Spouse name..."}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 mb-1">
+                      {lang === "bn" ? "স্পাউসের পেশা" : "Spouse Profession"}
+                    </label>
+                    <input
+                      type="text"
+                      value={spouseProfessionBn}
+                      onChange={(e) => setSpouseProfessionBn(e.target.value)}
+                      placeholder={lang === "bn" ? "যেমন: গৃহিণী, শিক্ষিকা..." : "e.g. Housewife..."}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 mb-1">
+                      {lang === "bn" ? "বাপের বাড়ি / ঠিকানা" : "Home / Address"}
+                    </label>
+                    <input
+                      type="text"
+                      value={spouseLocationBn}
+                      onChange={(e) => setSpouseLocationBn(e.target.value)}
+                      placeholder={lang === "bn" ? "গ্রাম / শহর / বাপের বাড়ি..." : "Village / City..."}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-stone-600 mb-1">
+                      {lang === "bn" ? "স্পাউসের ফোন (যদি থাকে)" : "Spouse Phone"}
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={spousePhone}
+                      onChange={(e) => setSpousePhone(e.target.value.replace(/[^\d+]/g, ""))}
+                      placeholder={lang === "bn" ? "ফোন নম্বর..." : "Phone..."}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* জন্ম (বছর - মাস - তারিখ) */}
             <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "জন্ম (বছর - মাস - তারিখ)" : "Birth (Year - Month - Day)"}
@@ -768,18 +825,18 @@ export default function MemberFormModal({
               </div>
             </div>
 
-            {/* অবস্থা / Status */}
+            {/* স্ট্যাটাস / অবস্থা */}
             <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "অবস্থা" : "Status"}
+                {lang === "bn" ? "স্ট্যাটাস (অবস্থা)" : "Status"}
               </label>
               <select
                 value={isAlive ? "alive" : "deceased"}
                 onChange={(e) => setIsAlive(e.target.value === "alive")}
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white"
               >
-                <option value="alive">{lang === "bn" ? "জীবিত" : "Living"}</option>
-                <option value="deceased">{lang === "bn" ? "প্রয়াত" : "Late"}</option>
+                <option value="alive">{lang === "bn" ? "জীবিত (Living)" : "Living"}</option>
+                <option value="deceased">{lang === "bn" ? "প্রয়াত (Late)" : "Late"}</option>
               </select>
             </div>
           </div>
@@ -790,14 +847,14 @@ export default function MemberFormModal({
               onClick={onClose}
               className="px-4 py-2 rounded-xl bg-stone-100 text-stone-700 font-bold text-xs cursor-pointer hover:bg-stone-200"
             >
-              {lang === "bn" ? "বাতিল" : "Cancel"}
+              {lang === "bn" ? "কেনসেল" : "Cancel"}
             </button>
             <button
               type="submit"
               className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold text-xs cursor-pointer hover:bg-emerald-800 shadow"
             >
               <Save className="w-3.5 h-3.5" />
-              {lang === "bn" ? "সংরক্ষণ" : "Save"}
+              {lang === "bn" ? "সেইভ" : "Save"}
             </button>
           </div>
         </form>

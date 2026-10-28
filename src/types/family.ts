@@ -28,6 +28,9 @@ export interface FamilyMember {
   spouseNameEn?: string;
   spouseProfessionBn?: string;
   spouseProfessionEn?: string;
+  spouseLocationBn?: string;
+  spouseLocationEn?: string;
+  spousePhone?: string;
   birthYear?: string;
   deathYear?: string;
   isAlive: boolean;

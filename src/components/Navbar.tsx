@@ -164,7 +164,7 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs sm:text-sm shadow cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{lang === "bn" ? "যোগ" : "Add"}</span>
+                <span>{lang === "bn" ? "অ্যাড" : "Add"}</span>
               </button>
             </div>
           </div>

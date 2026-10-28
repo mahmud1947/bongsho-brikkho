@@ -302,7 +302,7 @@ export default function FamilyTreeView({
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold"
               >
                 <UserPlus className="w-3 h-3" />
-                {lang === "bn" ? "সন্তান" : "Child"}
+                {lang === "bn" ? "সন্তান অ্যাড" : "Child"}
               </button>
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function FamilyTreeView({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={lang === "bn" ? "খুঁজুন..." : "Search..."}
+              placeholder={lang === "bn" ? "সার্চ..." : "Search..."}
               className="w-full pl-8 pr-2.5 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600"
             />
             {matchingMembers.length > 0 && (
