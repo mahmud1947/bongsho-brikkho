@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ZoomIn,
   ZoomOut,
@@ -37,12 +37,6 @@ export default function FamilyTreeView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setViewMode("mobile-tree");
-    }
-  }, []);
 
   const childrenMap = useMemo(() => {
     const map: Record<string, FamilyMember[]> = {};
@@ -373,15 +367,6 @@ export default function FamilyTreeView({
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <div className="flex bg-stone-100 p-1 rounded-xl mr-1">
             <button
-              onClick={() => setViewMode("mobile-tree")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
-                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300" : "text-stone-600"
-              }`}
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              {lang === "bn" ? "লিস্ট" : "List"}
-            </button>
-            <button
               onClick={() => setViewMode("canvas")}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
                 viewMode === "canvas" ? "bg-emerald-900 text-amber-300" : "text-stone-600"
@@ -389,6 +374,15 @@ export default function FamilyTreeView({
             >
               <Network className="w-3.5 h-3.5" />
               {lang === "bn" ? "চার্ট" : "Chart"}
+            </button>
+            <button
+              onClick={() => setViewMode("mobile-tree")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
+                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300" : "text-stone-600"
+              }`}
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              {lang === "bn" ? "লিস্ট" : "List"}
             </button>
           </div>
 
