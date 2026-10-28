@@ -59,6 +59,7 @@ export default function ProfilePage() {
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>("O+");
   const [professionBn, setProfessionBn] = useState("");
   const [locationBn, setLocationBn] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState<"married" | "unmarried">("unmarried");
   const [spouseNameBn, setSpouseNameBn] = useState("");
   const [phone, setPhone] = useState("");
   const [birthYear, setBirthYear] = useState("");
@@ -73,7 +74,8 @@ export default function ProfilePage() {
     const p = members.find((m) => m.id === newParentId);
     if (p) {
       setGeneration(p.generation + 1);
-      if (p.branchId !== "root") setBranchId(p.branchId);
+      const count = members.filter((m) => m.parentId === p.id).length;
+      setBranchId(`child-${Math.min(count + 1, 10)}`);
     }
   };
 
@@ -122,6 +124,14 @@ export default function ProfilePage() {
       e.preventDefault();
       const finalNameBn = nameBn.trim() || nameEn.trim() || currentUsername;
       const finalNameEn = nameEn.trim() || nameBn.trim() || currentUsername;
+      const finalSpouseBn =
+        maritalStatus === "unmarried"
+          ? "অবিবাহিত"
+          : spouseNameBn.trim() || "বিবাহিত";
+      const finalSpouseEn =
+        maritalStatus === "unmarried"
+          ? "Unmarried"
+          : spouseNameBn.trim() || "Married";
 
       await saveMember({
         id: `user-${currentUsername}`,
@@ -134,8 +144,8 @@ export default function ProfilePage() {
         generation,
         branchId,
         parentId: parentId || null,
-        spouseNameBn: spouseNameBn.trim() || undefined,
-        spouseNameEn: spouseNameBn.trim() || undefined,
+        spouseNameBn: finalSpouseBn,
+        spouseNameEn: finalSpouseEn,
         birthYear: birthYear.trim() || undefined,
         isAlive: true,
         bloodGroup,
@@ -187,7 +197,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "শাখা" : "Branch"}
+                {lang === "bn" ? "শাখা (সন্তান ক্রম)" : "Child Order"}
               </label>
               <select
                 value={branchId}
@@ -299,12 +309,31 @@ export default function ProfilePage() {
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "জীবনসঙ্গী" : "Spouse"}
               </label>
-              <input
-                type="text"
-                value={spouseNameBn}
-                onChange={(e) => setSpouseNameBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={maritalStatus}
+                  onChange={(e) =>
+                    setMaritalStatus(e.target.value as "married" | "unmarried")
+                  }
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  <option value="unmarried">
+                    {lang === "bn" ? "অবিবাহিত" : "Unmarried"}
+                  </option>
+                  <option value="married">
+                    {lang === "bn" ? "বিবাহিত" : "Married"}
+                  </option>
+                </select>
+                {maritalStatus === "married" && (
+                  <input
+                    type="text"
+                    value={spouseNameBn}
+                    onChange={(e) => setSpouseNameBn(e.target.value)}
+                    placeholder={lang === "bn" ? "নাম..." : "Name..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

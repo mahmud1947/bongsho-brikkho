@@ -44,6 +44,7 @@ export default function MemberFormModal({
   const [parentId, setParentId] = useState<string>("");
   const [branchId, setBranchId] = useState<string>("root");
   const [generation, setGeneration] = useState<number>(1);
+  const [maritalStatus, setMaritalStatus] = useState<"married" | "unmarried">("unmarried");
   const [spouseNameBn, setSpouseNameBn] = useState("");
   const [birthYear, setBirthYear] = useState("");
   const [isAlive, setIsAlive] = useState(true);
@@ -51,6 +52,12 @@ export default function MemberFormModal({
   const [professionBn, setProfessionBn] = useState("");
   const [locationBn, setLocationBn] = useState("");
   const [phone, setPhone] = useState("");
+
+  const getNextChildBranch = (pid: string) => {
+    const count = existingMembers.filter((m) => m.parentId === pid).length;
+    const nextIdx = Math.min(count + 1, 10);
+    return `child-${nextIdx}`;
+  };
 
   useEffect(() => {
     if (editingMember) {
@@ -61,7 +68,12 @@ export default function MemberFormModal({
       setParentId(editingMember.parentId || "");
       setBranchId(editingMember.branchId);
       setGeneration(editingMember.generation);
-      setSpouseNameBn(editingMember.spouseNameBn || "");
+      const isUnmarried =
+        !editingMember.spouseNameBn ||
+        editingMember.spouseNameBn === "অবিবাহিত" ||
+        editingMember.spouseNameBn === "Unmarried";
+      setMaritalStatus(isUnmarried ? "unmarried" : "married");
+      setSpouseNameBn(isUnmarried ? "" : editingMember.spouseNameBn || "");
       setBirthYear(editingMember.birthYear || "");
       setIsAlive(editingMember.isAlive);
       setBloodGroup(editingMember.bloodGroup);
@@ -74,8 +86,9 @@ export default function MemberFormModal({
       setNicknameBn("");
       setGender("male");
       setParentId(defaultParent.id);
-      setBranchId(defaultParent.branchId === "root" ? "boro-taraf" : defaultParent.branchId);
+      setBranchId(getNextChildBranch(defaultParent.id));
       setGeneration(defaultParent.generation + 1);
+      setMaritalStatus("unmarried");
       setSpouseNameBn("");
       setBirthYear("");
       setIsAlive(true);
@@ -90,8 +103,9 @@ export default function MemberFormModal({
       setNicknameBn("");
       setGender("male");
       setParentId(first?.id || "");
-      setBranchId(first ? "boro-taraf" : "root");
+      setBranchId(first ? getNextChildBranch(first.id) : "root");
       setGeneration(first ? first.generation + 1 : 1);
+      setMaritalStatus("unmarried");
       setSpouseNameBn("");
       setBirthYear("");
       setIsAlive(true);
@@ -112,7 +126,7 @@ export default function MemberFormModal({
     const p = existingMembers.find((m) => m.id === newParentId);
     if (p) {
       setGeneration(p.generation + 1);
-      if (p.branchId !== "root") setBranchId(p.branchId);
+      setBranchId(getNextChildBranch(p.id));
     }
   };
 
@@ -122,6 +136,15 @@ export default function MemberFormModal({
     e.preventDefault();
     const finalNameBn = nameBn.trim() || nameEn.trim() || "সদস্য";
     const finalNameEn = nameEn.trim() || nameBn.trim() || "Member";
+
+    const finalSpouseBn =
+      maritalStatus === "unmarried"
+        ? "অবিবাহিত"
+        : spouseNameBn.trim() || "বিবাহিত";
+    const finalSpouseEn =
+      maritalStatus === "unmarried"
+        ? "Unmarried"
+        : spouseNameBn.trim() || "Married";
 
     onSave({
       id: editingMember ? editingMember.id : `mem-${Date.now()}`,
@@ -134,8 +157,8 @@ export default function MemberFormModal({
       generation,
       branchId,
       parentId: parentId || null,
-      spouseNameBn: spouseNameBn.trim() || undefined,
-      spouseNameEn: spouseNameBn.trim() || undefined,
+      spouseNameBn: finalSpouseBn,
+      spouseNameEn: finalSpouseEn,
       birthYear: birthYear.trim() || undefined,
       isAlive,
       bloodGroup,
@@ -202,7 +225,7 @@ export default function MemberFormModal({
 
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "শাখা" : "Branch"}
+                {lang === "bn" ? "শাখা (সন্তান ক্রম)" : "Child Order"}
               </label>
               <select
                 value={branchId}
@@ -295,16 +318,36 @@ export default function MemberFormModal({
               />
             </div>
 
+            {/* Marital Status + Spouse Name */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "জীবনসঙ্গী" : "Spouse"}
               </label>
-              <input
-                type="text"
-                value={spouseNameBn}
-                onChange={(e) => setSpouseNameBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={maritalStatus}
+                  onChange={(e) =>
+                    setMaritalStatus(e.target.value as "married" | "unmarried")
+                  }
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  <option value="unmarried">
+                    {lang === "bn" ? "অবিবাহিত" : "Unmarried"}
+                  </option>
+                  <option value="married">
+                    {lang === "bn" ? "বিবাহিত" : "Married"}
+                  </option>
+                </select>
+                {maritalStatus === "married" && (
+                  <input
+                    type="text"
+                    value={spouseNameBn}
+                    onChange={(e) => setSpouseNameBn(e.target.value)}
+                    placeholder={lang === "bn" ? "নাম..." : "Name..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
