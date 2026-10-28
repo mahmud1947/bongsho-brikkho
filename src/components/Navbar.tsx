@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   TreePine,
   Users,
+  User,
   BookOpen,
   Bell,
   UserPlus,
@@ -43,6 +44,12 @@ export default function Navbar() {
       labelEn: "Members",
       icon: <Users className="w-4 h-4" />,
       badge: members.length,
+    },
+    {
+      href: "/profile",
+      labelBn: "প্রোফাইল",
+      labelEn: "Profile",
+      icon: <User className="w-4 h-4" />,
     },
     {
       href: "/heritage",
@@ -164,9 +171,9 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Links */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-2 py-1.5 shadow-lg">
-        <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
+      {/* Mobile Bottom Navigation Links (5 items) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg">
+        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = isRouteActive(item.href);
             return (
@@ -193,7 +200,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] mt-1 leading-none">
+                <span className="text-[10px] mt-1 leading-none truncate max-w-full">
                   {lang === "bn" ? item.labelBn : item.labelEn}
                 </span>
               </Link>
