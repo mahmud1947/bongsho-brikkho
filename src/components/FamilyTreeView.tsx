@@ -13,6 +13,8 @@ import {
   Search,
   LayoutList,
   Network,
+  Globe,
+  Phone,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language } from "@/types/family";
 
@@ -149,6 +151,7 @@ export default function FamilyTreeView({
     }
   };
 
+  // Mobile / List Mode Card
   const renderMobileNode = (member: FamilyMember): React.ReactNode => {
     if (selectedBranch !== "all" && member.generation > 1 && member.branchId !== selectedBranch) {
       return null;
@@ -165,48 +168,100 @@ export default function FamilyTreeView({
         <div
           id={`tree-node-${member.id}`}
           onClick={() => onSelectMember(member)}
-          className={`rounded-2xl bg-white border border-stone-200 border-l-4 ${style.left} p-3.5 shadow-sm cursor-pointer ${
+          className={`rounded-2xl bg-white border border-stone-200 border-l-4 ${style.left} p-3.5 shadow-sm hover:shadow-md transition cursor-pointer ${
             highlightedId === member.id ? "ring-2 ring-amber-400" : ""
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-900 font-bold text-xs flex items-center justify-center border border-emerald-200 flex-shrink-0">
-                G{member.generation}
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              {/* Gen • Sex • Status Header */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-950 text-amber-300">
+                  G{member.generation}
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-stone-100 text-stone-700">
+                  {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                    member.isAlive
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-stone-100 text-stone-600 border border-stone-200"
+                  }`}
+                >
+                  {member.isAlive ? (lang === "bn" ? "জীবিত" : "Living") : (lang === "bn" ? "প্রয়াত" : "Late")}
+                </span>
+                {member.bloodGroup && member.bloodGroup !== "Unknown" && (
+                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700">
+                    🩸 {member.bloodGroup}
+                  </span>
+                )}
               </div>
-              <div className="min-w-0">
-                <h3 className="font-bold text-stone-900 text-sm truncate">
+
+              {/* Name */}
+              <div>
+                <h3 className="font-bold text-stone-900 text-base leading-tight truncate">
                   {lang === "bn" ? member.nameBn : member.nameEn}
                 </h3>
-                <div className="flex items-center gap-2 text-xs text-stone-500 truncate">
-                  <span className="truncate">
-                    {lang === "bn" ? member.professionBn : member.professionEn}
+                {(member.nicknameBn || member.nicknameEn) && (
+                  <p className="text-xs text-amber-700 font-semibold truncate">
+                    ({lang === "bn" ? member.nicknameBn : member.nicknameEn})
+                  </p>
+                )}
+              </div>
+
+              {/* Country, Present Address & Phone */}
+              <div className="space-y-1 pt-1 text-xs text-stone-600">
+                {/* Country */}
+                <div className="flex items-center gap-1.5 text-stone-700 truncate">
+                  <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                  <span className="font-semibold truncate">
+                    {lang === "bn" ? (member.countryBn || "বাংলাদেশ") : (member.countryEn || "Bangladesh")}
                   </span>
-                  {member.bloodGroup !== "Unknown" && (
-                    <span className="text-rose-700 font-bold">
-                      • {member.bloodGroup}
-                    </span>
-                  )}
                 </div>
+
+                {/* Present Address */}
+                <div className="flex items-center gap-1.5 truncate">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <span className="truncate">
+                    {lang === "bn" ? member.locationBn : member.locationEn}
+                  </span>
+                </div>
+
+                {/* Phone */}
+                {member.phone && (
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                    <a
+                      href={`tel:${member.phone.replace(/\s+/g, "")}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-emerald-800 font-bold hover:underline truncate"
+                    >
+                      {member.phone}
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddChildToMember(member);
                 }}
-                className="p-1.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold"
+                className="p-2 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold hover:bg-amber-100 shadow-sm"
+                title={lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
               >
-                <UserPlus className="w-3.5 h-3.5" />
+                <UserPlus className="w-4 h-4" />
               </button>
               {hasChildren && (
                 <button
                   type="button"
                   onClick={(e) => toggleCollapse(member.id, e)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-900 text-amber-300 text-xs font-bold"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold hover:bg-emerald-800 shadow-sm"
                 >
                   <span>{visibleChildren.length}</span>
                   {isCollapsed ? (
@@ -221,7 +276,7 @@ export default function FamilyTreeView({
         </div>
 
         {hasChildren && !isCollapsed && (
-          <div className="mt-2 space-y-2 pl-4 border-l-2 border-emerald-700/35 ml-3">
+          <div className="mt-2 space-y-2 pl-3 sm:pl-4 border-l-2 border-emerald-700/35 ml-2.5 sm:ml-3">
             {visibleChildren.map((c) => renderMobileNode(c))}
           </div>
         )}
@@ -229,6 +284,7 @@ export default function FamilyTreeView({
     );
   };
 
+  // Canvas / Tree Node Card
   const renderCanvasNode = (member: FamilyMember): React.ReactNode => {
     if (selectedBranch !== "all" && member.generation > 1 && member.branchId !== selectedBranch) {
       return null;
@@ -245,15 +301,26 @@ export default function FamilyTreeView({
         <div
           id={`tree-node-${member.id}`}
           onClick={() => onSelectMember(member)}
-          className={`w-56 sm:w-64 rounded-2xl bg-white border-2 ${style.border} shadow-md hover:shadow-lg transition cursor-pointer relative ${
+          className={`w-60 sm:w-64 rounded-2xl bg-white border-2 ${style.border} shadow-md hover:shadow-xl transition cursor-pointer relative ${
             highlightedId === member.id ? "ring-4 ring-amber-400" : ""
           }`}
         >
-          <div className={`px-3 py-1 rounded-t-[14px] flex items-center justify-between text-[11px] font-bold ${style.header}`}>
-            <span>
-              G{member.generation} • {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
+          {/* Header: Gen • Sex (Left) | Status (Right) */}
+          <div className={`px-3 py-1.5 rounded-t-[14px] flex items-center justify-between text-[11px] font-bold ${style.header}`}>
+            <span className="flex items-center gap-1.5">
+              <span>G{member.generation}</span>
+              <span>•</span>
+              <span>
+                {member.gender === "female"
+                  ? lang === "bn"
+                    ? "নারী"
+                    : "Female"
+                  : lang === "bn"
+                  ? "পুরুষ"
+                  : "Male"}
+              </span>
             </span>
-            <span>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
               {member.isAlive
                 ? lang === "bn"
                   ? "জীবিত"
@@ -265,33 +332,71 @@ export default function FamilyTreeView({
           </div>
 
           <div className="p-3 space-y-2">
+            {/* Name */}
             <div>
-              <h3 className="font-bold text-stone-900 text-sm truncate">
+              <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug truncate">
                 {lang === "bn" ? member.nameBn : member.nameEn}
               </h3>
-              <p className="text-[11px] text-stone-500">
-                {member.birthYear || "?"}
-                {member.bloodGroup !== "Unknown" ? ` • 🩸 ${member.bloodGroup}` : ""}
-              </p>
+              <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
+                {(member.nicknameBn || member.nicknameEn) && (
+                  <span className="text-amber-700 font-semibold truncate">
+                    ({lang === "bn" ? member.nicknameBn : member.nicknameEn})
+                  </span>
+                )}
+                {member.bloodGroup && member.bloodGroup !== "Unknown" && (
+                  <span className="text-rose-700 font-bold ml-auto">
+                    🩸 {member.bloodGroup}
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="pt-2 border-t border-stone-100 space-y-1 text-xs text-stone-600">
+            {/* Country, Present Address, Phone */}
+            <div className="pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-600">
+              {/* Country */}
               <div className="flex items-center gap-1.5 truncate">
-                <Briefcase className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                <span className="truncate">
-                  {lang === "bn" ? member.professionBn : member.professionEn}
+                <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                <span className="font-semibold text-stone-700 truncate">
+                  {lang === "bn"
+                    ? member.countryBn || "বাংলাদেশ"
+                    : member.countryEn || "Bangladesh"}
                 </span>
               </div>
+
+              {/* Present Address */}
               <div className="flex items-center gap-1.5 truncate">
                 <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
                 <span className="truncate">
-                  {lang === "bn"
-                    ? [member.locationBn, member.countryBn].filter((x) => x && x !== "জানা নেই" && x !== "-").join(", ") || member.locationBn
-                    : [member.locationEn, member.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || member.locationEn}
+                  {lang === "bn" ? member.locationBn : member.locationEn}
                 </span>
               </div>
+
+              {/* Phone Number */}
+              {member.phone ? (
+                <div className="flex items-center gap-1.5 truncate">
+                  <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                  <a
+                    href={`tel:${member.phone.replace(/\s+/g, "")}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-emerald-800 font-bold hover:underline truncate"
+                  >
+                    {member.phone}
+                  </a>
+                </div>
+              ) : null}
+
+              {/* Profession (if available) */}
+              {member.professionBn && member.professionBn !== "-" && member.professionBn !== "জানা নেই" && (
+                <div className="flex items-center gap-1.5 truncate text-[11px] text-stone-500">
+                  <Briefcase className="w-3 h-3 text-stone-400 flex-shrink-0" />
+                  <span className="truncate">
+                    {lang === "bn" ? member.professionBn : member.professionEn}
+                  </span>
+                </div>
+              )}
             </div>
 
+            {/* Action button */}
             <div className="pt-1.5 flex justify-end">
               <button
                 type="button"
@@ -299,10 +404,10 @@ export default function FamilyTreeView({
                   e.stopPropagation();
                   onAddChildToMember(member);
                 }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-bold"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold shadow-sm"
               >
-                <UserPlus className="w-3 h-3" />
-                {lang === "bn" ? "সন্তান অ্যাড" : "Child"}
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}</span>
               </button>
             </div>
           </div>
@@ -311,7 +416,7 @@ export default function FamilyTreeView({
             <button
               type="button"
               onClick={(e) => toggleCollapse(member.id, e)}
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-emerald-900 text-amber-300 text-[11px] font-bold shadow cursor-pointer"
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-2.5 py-0.5 rounded-full bg-emerald-900 text-amber-300 text-[11px] font-bold shadow cursor-pointer hover:bg-emerald-800"
             >
               <span>{visibleChildren.length}</span>
               {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -358,7 +463,7 @@ export default function FamilyTreeView({
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-sm font-bold shadow cursor-pointer"
         >
           <UserPlus className="w-4 h-4" />
-          <span>{lang === "bn" ? "যোগ" : "Add"}</span>
+          <span>{lang === "bn" ? "নতুন মেম্বার অ্যাড" : "Add Member"}</span>
         </button>
       </div>
     );
@@ -366,34 +471,35 @@ export default function FamilyTreeView({
 
   return (
     <div className="space-y-3">
-      {/* Compact Toolbar */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <div className="flex bg-stone-100 p-1 rounded-xl mr-1">
+      {/* Mobile Friendly Compact Toolbar */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-3 shadow-sm space-y-2.5">
+        {/* Row 1: View Switcher (Chart / List) & Branches */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <div className="flex bg-stone-100 p-1 rounded-xl flex-shrink-0">
             <button
               onClick={() => setViewMode("canvas")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
-                viewMode === "canvas" ? "bg-emerald-900 text-amber-300" : "text-stone-600"
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600"
               }`}
             >
               <Network className="w-3.5 h-3.5" />
-              {lang === "bn" ? "চার্ট" : "Chart"}
+              <span>{lang === "bn" ? "চার্ট" : "Chart"}</span>
             </button>
             <button
               onClick={() => setViewMode("mobile-tree")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
-                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300" : "text-stone-600"
+              className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600"
               }`}
             >
               <LayoutList className="w-3.5 h-3.5" />
-              {lang === "bn" ? "লিস্ট" : "List"}
+              <span>{lang === "bn" ? "লিস্ট" : "List"}</span>
             </button>
           </div>
 
           <button
             onClick={() => setSelectedBranch("all")}
-            className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer ${
-              selectedBranch === "all" ? "bg-emerald-900 text-amber-300" : "bg-stone-100 text-stone-700"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer flex-shrink-0 ${
+              selectedBranch === "all" ? "bg-emerald-900 text-amber-300 shadow-sm" : "bg-stone-100 text-stone-700"
             }`}
           >
             {lang === "bn" ? "সব" : "All"}
@@ -404,8 +510,8 @@ export default function FamilyTreeView({
               <button
                 key={b.id}
                 onClick={() => setSelectedBranch(b.id)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer ${
-                  selectedBranch === b.id ? "bg-emerald-900 text-amber-300" : "bg-stone-100 text-stone-700"
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer flex-shrink-0 ${
+                  selectedBranch === b.id ? "bg-emerald-900 text-amber-300 shadow-sm" : "bg-stone-100 text-stone-700"
                 }`}
               >
                 {lang === "bn" ? b.nameBn : b.nameEn}
@@ -413,8 +519,9 @@ export default function FamilyTreeView({
             ))}
         </div>
 
-        <div className="flex items-center gap-1.5 justify-between sm:justify-end">
-          <div className="relative flex-1 sm:w-48">
+        {/* Row 2: Search, Expand, Compact & Zoom Controls */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-between">
+          <div className="relative flex-1 min-w-[160px]">
             <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -438,56 +545,61 @@ export default function FamilyTreeView({
             )}
           </div>
 
-          <button
-            onClick={expandAll}
-            className="px-2.5 py-1.5 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
-          >
-            {lang === "bn" ? "খুলুন" : "Expand"}
-          </button>
-          <button
-            onClick={collapseCompact}
-            className="px-2.5 py-1.5 rounded-xl bg-stone-100 text-stone-700 text-xs font-bold cursor-pointer"
-          >
-            {lang === "bn" ? "সংক্ষিপ্ত" : "Compact"}
-          </button>
+          <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={expandAll}
+              className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
+            >
+              {lang === "bn" ? "খুলুন" : "Expand"}
+            </button>
+            <button
+              onClick={collapseCompact}
+              className="px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold cursor-pointer"
+            >
+              {lang === "bn" ? "সংক্ষিপ্ত" : "Compact"}
+            </button>
 
-          {viewMode === "canvas" && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(1)))}
-                className="p-1.5 rounded-lg bg-stone-100 text-stone-700 cursor-pointer"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(1)))}
-                className="p-1.5 rounded-lg bg-stone-100 text-stone-700 cursor-pointer"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setZoom(1)}
-                className="p-1.5 rounded-lg bg-stone-100 text-stone-700 cursor-pointer"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+            {viewMode === "canvas" && (
+              <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl">
+                <button
+                  onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(1)))}
+                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(1)))}
+                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setZoom(1)}
+                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
+                  title="Reset"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Tree Viewport */}
+      {/* Viewport: Mobile-tree (List) or Visual Canvas (Chart) */}
       {viewMode === "mobile-tree" ? (
         <div className="space-y-2.5">
           {rootMembers.map((root) => renderMobileNode(root))}
         </div>
       ) : (
-        <div className="bg-white/60 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-4 sm:p-8 min-h-[500px]">
+        <div className="bg-white/70 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-4 sm:p-8 min-h-[520px] touch-pan-x touch-pan-y overscroll-x-contain">
           <div
             className="inline-flex min-w-full justify-start sm:justify-center transition-transform duration-200 origin-top-left sm:origin-top"
             style={{ transform: `scale(${zoom})` }}
           >
-            <div className="flex items-start gap-6 pb-10">
+            <div className="flex items-start gap-6 pb-12 pt-2">
               {rootMembers.map((root) => renderCanvasNode(root))}
             </div>
           </div>
