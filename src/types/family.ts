@@ -13,6 +13,7 @@ export type BloodGroup =
 
 export interface FamilyMember {
   id: string;
+  username?: string;
   nameBn: string;
   nameEn: string;
   nicknameBn?: string;

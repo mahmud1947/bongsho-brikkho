@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Users, Layers, GitBranch, HeartPulse, TreePine } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
+import MemberProfileModal from "@/components/MemberProfileModal";
 import MemberFormModal from "@/components/MemberFormModal";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -12,11 +13,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     lang,
     members,
     branches,
+    selectedMember,
+    setSelectedMember,
     isFormOpen,
     setIsFormOpen,
     editingMember,
     defaultParentForAdd,
+    openAddModal,
+    openEditModal,
     saveMember,
+    deleteMember,
   } = useFamily();
 
   const stats = useMemo(() => {
@@ -119,6 +125,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
+
+      <MemberProfileModal
+        member={selectedMember}
+        allMembers={members}
+        branches={branches}
+        lang={lang}
+        onClose={() => setSelectedMember(null)}
+        onSelectMember={(m) => setSelectedMember(m)}
+        onEditMember={(m) => openEditModal(m)}
+        onAddChild={(parent) => openAddModal(parent)}
+        onDeleteMember={(id) => deleteMember(id)}
+      />
 
       <MemberFormModal
         isOpen={isFormOpen}

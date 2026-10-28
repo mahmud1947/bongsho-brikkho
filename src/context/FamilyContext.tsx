@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import {
   collection,
   doc,
@@ -20,6 +20,8 @@ import {
   TimelineEvent,
 } from "@/types/family";
 
+const USERNAME_KEY = "bongsho_current_username";
+
 interface FamilyContextType {
   lang: Language;
   setLang: (lang: Language) => void;
@@ -28,6 +30,10 @@ interface FamilyContextType {
   timeline: TimelineEvent[];
   gallery: GalleryItem[];
   notices: FamilyNotice[];
+  currentUsername: string | null;
+  currentUserProfile: FamilyMember | null;
+  loginUsername: (username: string) => void;
+  logoutUsername: () => void;
   selectedMember: FamilyMember | null;
   setSelectedMember: (m: FamilyMember | null) => void;
   isFormOpen: boolean;
@@ -63,11 +69,17 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [notices, setNotices] = useState<FamilyNotice[]>([]);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
 
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [defaultParentForAdd, setDefaultParentForAdd] = useState<FamilyMember | null>(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem(USERNAME_KEY);
+    if (savedUser) setCurrentUsername(savedUser);
+  }, []);
 
   // Real-time Firestore subscriptions across all devices
   useEffect(() => {
@@ -99,6 +111,26 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       unsubNotices();
     };
   }, []);
+
+  const currentUserProfile = useMemo(() => {
+    if (!currentUsername) return null;
+    const norm = currentUsername.trim().toLowerCase();
+    return (
+      members.find((m) => m.username?.toLowerCase() === norm) || null
+    );
+  }, [members, currentUsername]);
+
+  const loginUsername = (username: string) => {
+    const norm = username.trim().toLowerCase().replace(/^@/, "");
+    if (!norm) return;
+    setCurrentUsername(norm);
+    localStorage.setItem(USERNAME_KEY, norm);
+  };
+
+  const logoutUsername = () => {
+    setCurrentUsername(null);
+    localStorage.removeItem(USERNAME_KEY);
+  };
 
   const openAddModal = (parent: FamilyMember | null = null) => {
     setEditingMember(null);
@@ -215,6 +247,10 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         timeline,
         gallery,
         notices,
+        currentUsername,
+        currentUserProfile,
+        loginUsername,
+        logoutUsername,
         selectedMember,
         setSelectedMember,
         isFormOpen,

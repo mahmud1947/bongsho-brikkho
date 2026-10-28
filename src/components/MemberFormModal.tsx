@@ -125,6 +125,7 @@ export default function MemberFormModal({
 
     onSave({
       id: editingMember ? editingMember.id : `mem-${Date.now()}`,
+      username: editingMember?.username,
       nameBn: finalNameBn,
       nameEn: finalNameEn,
       nicknameBn: nicknameBn.trim() || undefined,
