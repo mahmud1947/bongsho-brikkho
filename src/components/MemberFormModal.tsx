@@ -27,6 +27,37 @@ const BLOOD_GROUPS: BloodGroup[] = [
   "Unknown",
 ];
 
+const PROFESSION_OPTIONS = [
+  { bn: "গৃহিণী", en: "Housewife" },
+  { bn: "কৃষক", en: "Farmer" },
+  { bn: "রিটায়ার্ড (অবসরপ্রাপ্ত)", en: "Retired" },
+  { bn: "ব্যবসায়ী", en: "Businessman" },
+  { bn: "শিক্ষার্থী", en: "Student" },
+  { bn: "চাকরিজীবী", en: "Service Holder" },
+  { bn: "শিক্ষক", en: "Teacher" },
+  { bn: "প্রবাসী", en: "Expatriate" },
+  { bn: "চিকিৎসক", en: "Doctor" },
+  { bn: "প্রকৌশলী", en: "Engineer" },
+  { bn: "জানা নেই", en: "Unknown" },
+];
+
+const YEARS = Array.from({ length: 2026 - 1850 + 1 }, (_, i) => String(2026 - i));
+const MONTHS = [
+  { val: "01", bn: "০১ (জানুয়ারি)", en: "01 (Jan)" },
+  { val: "02", bn: "০২ (ফেব্রুয়ারি)", en: "02 (Feb)" },
+  { val: "03", bn: "০৩ (মার্চ)", en: "03 (Mar)" },
+  { val: "04", bn: "০৪ (এপ্রিল)", en: "04 (Apr)" },
+  { val: "05", bn: "০৫ (মে)", en: "05 (May)" },
+  { val: "06", bn: "০৬ (জুন)", en: "06 (Jun)" },
+  { val: "07", bn: "০৭ (জুলাই)", en: "07 (Jul)" },
+  { val: "08", bn: "০৮ (আগস্ট)", en: "08 (Aug)" },
+  { val: "09", bn: "০৯ (সেপ্টেম্বর)", en: "09 (Sep)" },
+  { val: "10", bn: "১০ (অক্টোবর)", en: "10 (Oct)" },
+  { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)" },
+  { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)" },
+];
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"));
+
 export default function MemberFormModal({
   isOpen,
   onClose,
@@ -39,17 +70,31 @@ export default function MemberFormModal({
 }: MemberFormModalProps) {
   const [nameBn, setNameBn] = useState("");
   const [nameEn, setNameEn] = useState("");
+
+  // Nickname: "none" | "unknown" | "custom"
+  const [nicknameMode, setNicknameMode] = useState<"none" | "unknown" | "custom">("none");
   const [nicknameBn, setNicknameBn] = useState("");
+
   const [gender, setGender] = useState<"male" | "female">("male");
   const [parentId, setParentId] = useState<string>("");
   const [branchId, setBranchId] = useState<string>("root");
   const [generation, setGeneration] = useState<number>(1);
+
+  // Marital status
   const [maritalStatus, setMaritalStatus] = useState<"married" | "unmarried">("unmarried");
   const [spouseNameBn, setSpouseNameBn] = useState("");
-  const [birthYear, setBirthYear] = useState("");
+
+  // Profession: preset or "custom"
+  const [professionSelect, setProfessionSelect] = useState<string>("গৃহিণী");
+  const [professionCustom, setProfessionCustom] = useState<string>("");
+
+  // Birth: Year -> Month -> Day (or "unknown")
+  const [birthYearPart, setBirthYearPart] = useState<string>("unknown");
+  const [birthMonthPart, setBirthMonthPart] = useState<string>("");
+  const [birthDayPart, setBirthDayPart] = useState<string>("");
+
   const [isAlive, setIsAlive] = useState(true);
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>("O+");
-  const [professionBn, setProfessionBn] = useState("");
   const [locationBn, setLocationBn] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -63,26 +108,68 @@ export default function MemberFormModal({
     if (editingMember) {
       setNameBn(editingMember.nameBn);
       setNameEn(editingMember.nameEn);
-      setNicknameBn(editingMember.nicknameBn || "");
+
+      // Parse Nickname
+      if (!editingMember.nicknameBn || editingMember.nicknameBn === "নেই" || editingMember.nicknameBn === "None") {
+        setNicknameMode("none");
+        setNicknameBn("");
+      } else if (editingMember.nicknameBn === "জানা নেই" || editingMember.nicknameBn === "Unknown") {
+        setNicknameMode("unknown");
+        setNicknameBn("");
+      } else {
+        setNicknameMode("custom");
+        setNicknameBn(editingMember.nicknameBn);
+      }
+
       setGender(editingMember.gender);
       setParentId(editingMember.parentId || "");
       setBranchId(editingMember.branchId);
       setGeneration(editingMember.generation);
+
+      // Parse Marital Status
       const isUnmarried =
         !editingMember.spouseNameBn ||
         editingMember.spouseNameBn === "অবিবাহিত" ||
         editingMember.spouseNameBn === "Unmarried";
       setMaritalStatus(isUnmarried ? "unmarried" : "married");
       setSpouseNameBn(isUnmarried ? "" : editingMember.spouseNameBn || "");
-      setBirthYear(editingMember.birthYear || "");
+
+      // Parse Profession
+      const matchedProf = PROFESSION_OPTIONS.find(
+        (p) => p.bn === editingMember.professionBn || p.en === editingMember.professionEn
+      );
+      if (matchedProf) {
+        setProfessionSelect(matchedProf.bn);
+        setProfessionCustom("");
+      } else if (editingMember.professionBn && editingMember.professionBn !== "-") {
+        setProfessionSelect("custom");
+        setProfessionCustom(editingMember.professionBn);
+      } else {
+        setProfessionSelect("জানা নেই");
+        setProfessionCustom("");
+      }
+
+      // Parse Birth Date (YYYY-MM-DD or YYYY or জানা নেই)
+      const by = editingMember.birthYear || "";
+      if (!by || by === "জানা নেই" || by === "Unknown" || by === "?") {
+        setBirthYearPart("unknown");
+        setBirthMonthPart("");
+        setBirthDayPart("");
+      } else {
+        const parts = by.split(/[-/]/);
+        setBirthYearPart(parts[0] || "unknown");
+        setBirthMonthPart(parts[1] || "");
+        setBirthDayPart(parts[2] || "");
+      }
+
       setIsAlive(editingMember.isAlive);
       setBloodGroup(editingMember.bloodGroup);
-      setProfessionBn(editingMember.professionBn);
-      setLocationBn(editingMember.locationBn);
+      setLocationBn(editingMember.locationBn === "-" ? "" : editingMember.locationBn);
       setPhone(editingMember.phone || "");
     } else if (defaultParent) {
       setNameBn("");
       setNameEn("");
+      setNicknameMode("none");
       setNicknameBn("");
       setGender("male");
       setParentId(defaultParent.id);
@@ -90,16 +177,20 @@ export default function MemberFormModal({
       setGeneration(defaultParent.generation + 1);
       setMaritalStatus("unmarried");
       setSpouseNameBn("");
-      setBirthYear("");
+      setProfessionSelect("শিক্ষার্থী");
+      setProfessionCustom("");
+      setBirthYearPart("unknown");
+      setBirthMonthPart("");
+      setBirthDayPart("");
       setIsAlive(true);
       setBloodGroup("O+");
-      setProfessionBn("");
-      setLocationBn(defaultParent.locationBn || "");
+      setLocationBn(defaultParent.locationBn === "-" ? "" : defaultParent.locationBn || "");
       setPhone("");
     } else {
       const first = existingMembers[0];
       setNameBn("");
       setNameEn("");
+      setNicknameMode("none");
       setNicknameBn("");
       setGender("male");
       setParentId(first?.id || "");
@@ -107,10 +198,13 @@ export default function MemberFormModal({
       setGeneration(first ? first.generation + 1 : 1);
       setMaritalStatus("unmarried");
       setSpouseNameBn("");
-      setBirthYear("");
+      setProfessionSelect("গৃহিণী");
+      setProfessionCustom("");
+      setBirthYearPart("unknown");
+      setBirthMonthPart("");
+      setBirthDayPart("");
       setIsAlive(true);
       setBloodGroup("O+");
-      setProfessionBn("");
       setLocationBn("");
       setPhone("");
     }
@@ -137,6 +231,21 @@ export default function MemberFormModal({
     const finalNameBn = nameBn.trim() || nameEn.trim() || "সদস্য";
     const finalNameEn = nameEn.trim() || nameBn.trim() || "Member";
 
+    // Nickname value
+    const finalNickBn =
+      nicknameMode === "none"
+        ? "নেই"
+        : nicknameMode === "unknown"
+        ? "জানা নেই"
+        : nicknameBn.trim() || "নেই";
+    const finalNickEn =
+      nicknameMode === "none"
+        ? "None"
+        : nicknameMode === "unknown"
+        ? "Unknown"
+        : nicknameBn.trim() || "None";
+
+    // Spouse value
     const finalSpouseBn =
       maritalStatus === "unmarried"
         ? "অবিবাহিত"
@@ -146,26 +255,49 @@ export default function MemberFormModal({
         ? "Unmarried"
         : spouseNameBn.trim() || "Married";
 
+    // Profession value
+    const matchedProf = PROFESSION_OPTIONS.find((p) => p.bn === professionSelect);
+    const finalProfBn =
+      professionSelect === "custom"
+        ? professionCustom.trim() || "জানা নেই"
+        : matchedProf?.bn || "জানা নেই";
+    const finalProfEn =
+      professionSelect === "custom"
+        ? professionCustom.trim() || "Unknown"
+        : matchedProf?.en || "Unknown";
+
+    // Birth date value (Year -> Month -> Day)
+    let finalBirth = "জানা নেই";
+    if (birthYearPart !== "unknown") {
+      finalBirth = birthYearPart;
+      if (birthMonthPart) {
+        finalBirth += `-${birthMonthPart}`;
+        if (birthDayPart) {
+          finalBirth += `-${birthDayPart}`;
+        }
+      }
+    }
+
     onSave({
       id: editingMember ? editingMember.id : `mem-${Date.now()}`,
       username: editingMember?.username,
       nameBn: finalNameBn,
       nameEn: finalNameEn,
-      nicknameBn: nicknameBn.trim() || undefined,
-      nicknameEn: nicknameBn.trim() || undefined,
+      nicknameBn: finalNickBn,
+      nicknameEn: finalNickEn,
       gender,
       generation,
       branchId,
       parentId: parentId || null,
       spouseNameBn: finalSpouseBn,
       spouseNameEn: finalSpouseEn,
-      birthYear: birthYear.trim() || undefined,
+      birthYear: finalBirth,
       isAlive,
       bloodGroup,
-      professionBn: professionBn.trim() || "-",
-      professionEn: professionBn.trim() || "-",
-      locationBn: locationBn.trim() || "-",
-      locationEn: locationBn.trim() || "-",
+      professionBn: finalProfBn,
+      professionEn: finalProfEn,
+      locationBn: locationBn.trim() || "জানা নেই",
+      locationEn: locationBn.trim() || "Unknown",
       phone: phone.trim() || undefined,
       bioBn: "",
       bioEn: "",
@@ -180,7 +312,7 @@ export default function MemberFormModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col"
       >
         <div className="bg-emerald-950 px-5 py-3.5 text-white flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
@@ -265,16 +397,33 @@ export default function MemberFormModal({
               />
             </div>
 
+            {/* ডাকনাম (Nickname with Default Options) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "ডাকনাম" : "Nickname"}
               </label>
-              <input
-                type="text"
-                value={nicknameBn}
-                onChange={(e) => setNicknameBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={nicknameMode}
+                  onChange={(e) =>
+                    setNicknameMode(e.target.value as "none" | "unknown" | "custom")
+                  }
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  <option value="none">{lang === "bn" ? "নেই" : "None"}</option>
+                  <option value="unknown">{lang === "bn" ? "জানা নেই" : "Unknown"}</option>
+                  <option value="custom">{lang === "bn" ? "আছে (লিখুন)" : "Custom"}</option>
+                </select>
+                {nicknameMode === "custom" && (
+                  <input
+                    type="text"
+                    value={nicknameBn}
+                    onChange={(e) => setNicknameBn(e.target.value)}
+                    placeholder={lang === "bn" ? "ডাকনাম..." : "Nickname..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -294,16 +443,36 @@ export default function MemberFormModal({
               </select>
             </div>
 
+            {/* পেশা (Profession Suggestions + Custom) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "পেশা" : "Profession"}
               </label>
-              <input
-                type="text"
-                value={professionBn}
-                onChange={(e) => setProfessionBn(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={professionSelect}
+                  onChange={(e) => setProfessionSelect(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  {PROFESSION_OPTIONS.map((p) => (
+                    <option key={p.bn} value={p.bn}>
+                      {lang === "bn" ? p.bn : p.en}
+                    </option>
+                  ))}
+                  <option value="custom">
+                    {lang === "bn" ? "অন্যান্য (লিখুন)" : "Other (Type)"}
+                  </option>
+                </select>
+                {professionSelect === "custom" && (
+                  <input
+                    type="text"
+                    value={professionCustom}
+                    onChange={(e) => setProfessionCustom(e.target.value)}
+                    placeholder={lang === "bn" ? "পেশা..." : "Profession..."}
+                    className="flex-1 min-w-0 px-2.5 py-2 rounded-xl border border-stone-200"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -318,7 +487,7 @@ export default function MemberFormModal({
               />
             </div>
 
-            {/* Marital Status + Spouse Name */}
+            {/* জীবনসঙ্গী (Marital Status + Spouse Name) */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "জীবনসঙ্গী" : "Spouse"}
@@ -362,19 +531,67 @@ export default function MemberFormModal({
               />
             </div>
 
-            <div>
+            {/* জন্ম (Year -> Month -> Day or Unknown) */}
+            <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "জন্ম" : "Birth"}
+                {lang === "bn" ? "জন্ম (বছর - মাস - তারিখ)" : "Birth (Year - Month - Day)"}
               </label>
-              <input
-                type="text"
-                value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200"
-              />
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={birthYearPart}
+                  onChange={(e) => {
+                    setBirthYearPart(e.target.value);
+                    if (e.target.value === "unknown") {
+                      setBirthMonthPart("");
+                      setBirthDayPart("");
+                    }
+                  }}
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
+                >
+                  <option value="unknown">
+                    {lang === "bn" ? "জানা নেই" : "Unknown"}
+                  </option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  disabled={birthYearPart === "unknown"}
+                  value={birthMonthPart}
+                  onChange={(e) => {
+                    setBirthMonthPart(e.target.value);
+                    if (!e.target.value) setBirthDayPart("");
+                  }}
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white disabled:opacity-50"
+                >
+                  <option value="">{lang === "bn" ? "মাস" : "Month"}</option>
+                  {MONTHS.map((m) => (
+                    <option key={m.val} value={m.val}>
+                      {lang === "bn" ? m.bn : m.en}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  disabled={birthYearPart === "unknown" || !birthMonthPart}
+                  value={birthDayPart}
+                  onChange={(e) => setBirthDayPart(e.target.value)}
+                  className="px-2.5 py-2 rounded-xl border border-stone-200 bg-white disabled:opacity-50"
+                >
+                  <option value="">{lang === "bn" ? "তারিখ" : "Day"}</option>
+                  {DAYS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
+            <div className="col-span-2">
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
                 {lang === "bn" ? "অবস্থা" : "Status"}
               </label>
