@@ -1,0 +1,38 @@
+{
+  "name": "বংশবৃক্ষ - পারিবারিক তথ্য ও ইতিহাস",
+  "short_name": "বংশবৃক্ষ",
+  "description": "একটি আধুনিক পারিবারিক বংশবৃক্ষ ও পরিবার পরিচিতি প্ল্যাটফর্ম",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "orientation": "portrait-primary",
+  "categories": ["social", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
