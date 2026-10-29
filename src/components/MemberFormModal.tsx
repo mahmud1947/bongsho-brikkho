@@ -268,7 +268,7 @@ export default function MemberFormModal({
       setSpouseNameBn("");
       setSpouseProfessionBn("");
       setSpousePhone("");
-      setProfessionSelect("গৃহিণী");
+      setProfessionSelect("ব্যবসায়ী");
       setProfessionCustom("");
       setCountrySelect("বাংলাদেশ");
       setCountryCustom("");
@@ -313,6 +313,48 @@ export default function MemberFormModal({
       setPhoneError(lang === "bn" ? "ফোন নম্বর সর্বোচ্চ ১৫ ডিজিট হতে পারে" : "Phone max 15 digits");
     } else {
       setPhoneError("");
+    }
+  };
+
+  const handleNameBnChange = (val: string) => {
+    setNameBn(val);
+    if (!editingMember) {
+      if (/বেগম|খাতুন|বিবি|বানু|আক্তার/i.test(val)) {
+        setGender("female");
+        if (professionSelect !== "custom") {
+          setProfessionSelect("গৃহিণী");
+        }
+      }
+    }
+  };
+
+  const handleNameEnChange = (val: string) => {
+    setNameEn(val);
+    if (!editingMember) {
+      if (/begum|khatun|bibi|banu|akter|aktar/i.test(val)) {
+        setGender("female");
+        if (professionSelect !== "custom") {
+          setProfessionSelect("গৃহিণী");
+        }
+      }
+    }
+  };
+
+  const handleGenderChange = (newGender: "male" | "female") => {
+    setGender(newGender);
+    if (!editingMember) {
+      if (newGender === "female" && (professionSelect === "ব্যবসায়ী" || professionSelect === "কৃষক")) {
+        setProfessionSelect("গৃহিণী");
+      } else if (newGender === "male" && professionSelect === "গৃহিণী") {
+        setProfessionSelect("ব্যবসায়ী");
+      }
+    }
+  };
+
+  const handleProfessionChange = (newProf: string) => {
+    setProfessionSelect(newProf);
+    if (!editingMember && newProf === "গৃহিণী") {
+      setGender("female");
     }
   };
 
@@ -520,7 +562,7 @@ export default function MemberFormModal({
                 type="text"
                 required={!nameEn}
                 value={nameBn}
-                onChange={(e) => setNameBn(e.target.value)}
+                onChange={(e) => handleNameBnChange(e.target.value)}
                 placeholder={lang === "bn" ? "বাংলা নাম..." : "Bangla name..."}
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
@@ -534,7 +576,7 @@ export default function MemberFormModal({
               <input
                 type="text"
                 value={nameEn}
-                onChange={(e) => setNameEn(e.target.value)}
+                onChange={(e) => handleNameEnChange(e.target.value)}
                 placeholder={lang === "bn" ? "ইংরেজি নাম..." : "English name..."}
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
@@ -576,7 +618,7 @@ export default function MemberFormModal({
               </label>
               <select
                 value={gender}
-                onChange={(e) => setGender(e.target.value as "male" | "female")}
+                onChange={(e) => handleGenderChange(e.target.value as "male" | "female")}
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 bg-white font-semibold text-stone-800"
               >
                 <option value="male">{lang === "bn" ? "পুরুষ" : "Male"}</option>
@@ -592,7 +634,7 @@ export default function MemberFormModal({
               <div className="flex gap-1.5">
                 <select
                   value={professionSelect}
-                  onChange={(e) => setProfessionSelect(e.target.value)}
+                  onChange={(e) => handleProfessionChange(e.target.value)}
                   className="w-full px-2.5 py-2 rounded-xl border border-stone-200 bg-white font-semibold"
                 >
                   {PROFESSION_OPTIONS.map((p) => (

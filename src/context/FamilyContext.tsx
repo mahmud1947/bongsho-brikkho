@@ -149,7 +149,24 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   // Real-time Firestore subscriptions across all devices
   useEffect(() => {
     const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
-      const list = snap.docs.map((d) => d.data() as FamilyMember);
+      const list = snap.docs.map((d) => {
+        const item = d.data() as FamilyMember;
+        // Auto-heal gender for obvious female titles if improperly saved as male
+        const isEvidentlyFemale =
+          /বেগম|খাতুন|বিবি|বানু|আক্তার/i.test(item.nameBn || "") ||
+          /begum|khatun|bibi|banu|akter|aktar/i.test(item.nameEn || "") ||
+          item.professionBn === "গৃহিণী" ||
+          item.professionEn === "Housewife";
+
+        if (item.gender === "male" && isEvidentlyFemale) {
+          item.gender = "female";
+          // Also persist the fix to Firestore seamlessly
+          try {
+            setDoc(doc(db, "members", item.id), { gender: "female" }, { merge: true }).catch(() => {});
+          } catch (e) {}
+        }
+        return item;
+      });
       list.sort((a, b) => a.generation - b.generation || a.id.localeCompare(b.id));
       setMembers(list);
     });

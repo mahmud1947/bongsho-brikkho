@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { BloodGroup } from "@/types/family";
+import AdminLoginCard from "@/components/AdminLoginCard";
 
 const BLOOD_GROUPS: BloodGroup[] = [
   "A+",
@@ -190,38 +191,42 @@ export default function ProfilePage() {
   // STEP 1: Enter Username
   if (!currentUsername) {
     return (
-      <div className="max-w-md mx-auto bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm space-y-5 mt-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-950 text-amber-400 flex items-center justify-center">
-            <AtSign className="w-5 h-5" />
+      <div className="max-w-md mx-auto space-y-4 mt-4">
+        <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-950 text-amber-400 flex items-center justify-center">
+              <AtSign className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-stone-900">
+              {lang === "bn" ? "ইউজারনেম" : "Username"}
+            </h2>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-stone-900">
-            {lang === "bn" ? "ইউজারনেম" : "Username"}
-          </h2>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (usernameInput.trim()) loginUsername(usernameInput);
+            }}
+            className="space-y-3"
+          >
+            <input
+              type="text"
+              required
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              placeholder={lang === "bn" ? "username লিখুন..." : "Enter username..."}
+              className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+            />
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-sm shadow cursor-pointer"
+            >
+              {lang === "bn" ? "কন্টিনিউ" : "Continue"}
+            </button>
+          </form>
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (usernameInput.trim()) loginUsername(usernameInput);
-          }}
-          className="space-y-3"
-        >
-          <input
-            type="text"
-            required
-            value={usernameInput}
-            onChange={(e) => setUsernameInput(e.target.value)}
-            placeholder={lang === "bn" ? "username লিখুন..." : "Enter username..."}
-            className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-          />
-          <button
-            type="submit"
-            className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-sm shadow cursor-pointer"
-          >
-            {lang === "bn" ? "কন্টিনিউ" : "Continue"}
-          </button>
-        </form>
+        <AdminLoginCard />
       </div>
     );
   }
@@ -336,7 +341,8 @@ export default function ProfilePage() {
     };
 
     return (
-      <div className="max-w-xl mx-auto bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
+      <div className="max-w-xl mx-auto space-y-4">
+        <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-sm">
         <div className="bg-emerald-950 px-5 py-4 text-white flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-sm sm:text-base">
             <User className="w-4 h-4 text-amber-400" />
@@ -771,8 +777,11 @@ export default function ProfilePage() {
           </button>
         </form>
       </div>
-    );
-  }
+
+      <AdminLoginCard />
+    </div>
+  );
+}
 
   // STEP 3: Own Profile View
   const parent = members.find((m) => m.id === currentUserProfile.parentId) || null;
@@ -787,8 +796,9 @@ export default function ProfilePage() {
   const branch = branches.find((b) => b.id === currentUserProfile.branchId);
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
-      {/* Header */}
+    <div className="max-w-2xl mx-auto space-y-4">
+      <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden">
+        {/* Header */}
       <div className="bg-emerald-950 p-5 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-amber-400 text-emerald-950 font-extrabold text-xl flex items-center justify-center flex-shrink-0">
@@ -1027,59 +1037,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Admin Access / Delete Permission Section */}
-        <div className="pt-4 border-t border-stone-200">
-          <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  isAdmin ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-stone-200 text-stone-700"
-                }`}
-              >
-                {isAdmin ? <ShieldCheck className="w-5 h-5 text-amber-700" /> : <Lock className="w-4 h-4 text-stone-600" />}
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                  <span>{lang === "bn" ? "অ্যাডমিন অনুমতি" : "Admin Permission"}</span>
-                  {isAdmin && (
-                    <span className="px-1.5 py-0.2 rounded bg-amber-400 text-emerald-950 font-extrabold text-[10px]">
-                      VERIFIED
-                    </span>
-                  )}
-                </h4>
-                <p className="text-[11px] text-stone-500">
-                  {isAdmin
-                    ? (lang === "bn" ? "আপনি অ্যাডমিন হিসেবে লগইন আছেন (ডিলিট করতে পারবেন)" : "Logged in as Admin (can delete)")
-                    : (lang === "bn" ? "ডিলিট করার জন্য পাসওয়ার্ড প্রয়োজন" : "Password required to delete")}
-                </p>
-              </div>
-            </div>
-
-            {isAdmin ? (
-              <button
-                onClick={logoutAdmin}
-                className="px-3 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold cursor-pointer transition"
-              >
-                {lang === "bn" ? "লগআউট" : "Logout"}
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  openDeletePrompt({
-                    title: lang === "bn" ? "অ্যাডমিন লগইন" : "Admin Login",
-                    itemName: undefined,
-                    onConfirm: async () => {},
-                  });
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-bold shadow cursor-pointer transition"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{lang === "bn" ? "অ্যাডমিন লগইন" : "Admin Login"}</span>
-              </button>
-            )}
-          </div>
         </div>
       </div>
+
+      {/* Admin Login Card */}
+      <AdminLoginCard />
     </div>
   );
 }
