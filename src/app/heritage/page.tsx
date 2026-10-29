@@ -13,6 +13,7 @@ export default function HeritagePage() {
     deleteTimelineEvent,
     addGalleryItem,
     deleteGalleryItem,
+    openDeletePrompt,
   } = useFamily();
 
   return (
@@ -21,9 +22,23 @@ export default function HeritagePage() {
       gallery={gallery}
       lang={lang}
       onAddTimelineEvent={addTimelineEvent}
-      onDeleteTimelineEvent={deleteTimelineEvent}
+      onDeleteTimelineEvent={(id) => {
+        const item = timeline.find((x) => x.id === id);
+        openDeletePrompt({
+          title: lang === "bn" ? "ইতিহাসের ঘটনা মুছুন" : "Delete Event",
+          itemName: item ? (lang === "bn" ? item.titleBn : item.titleEn) : undefined,
+          onConfirm: () => deleteTimelineEvent(id),
+        });
+      }}
       onAddGalleryItem={addGalleryItem}
-      onDeleteGalleryItem={deleteGalleryItem}
+      onDeleteGalleryItem={(id) => {
+        const item = gallery.find((x) => x.id === id);
+        openDeletePrompt({
+          title: lang === "bn" ? "ছবি মুছুন" : "Delete Photo",
+          itemName: item ? (lang === "bn" ? item.titleBn : item.titleEn) : undefined,
+          onConfirm: () => deleteGalleryItem(id),
+        });
+      }}
     />
   );
 }

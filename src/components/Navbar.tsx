@@ -12,6 +12,7 @@ import {
   UserPlus,
   Globe,
   RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 
@@ -24,6 +25,8 @@ export default function Navbar() {
     resetData,
     members,
     notices,
+    isAdmin,
+    logoutAdmin,
   } = useFamily();
 
   const navItems = [
@@ -115,6 +118,16 @@ export default function Navbar() {
 
             {/* Actions */}
             <div className="flex items-center gap-1.5">
+              {isAdmin && (
+                <button
+                  onClick={logoutAdmin}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-400/20 border border-amber-400/50 text-xs font-bold text-amber-300 hover:bg-amber-400/30 cursor-pointer"
+                  title={lang === "bn" ? "অ্যাডমিন লগআউট করুন" : "Logout Admin"}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">{lang === "bn" ? "অ্যাডমিন" : "Admin"}</span>
+                </button>
+              )}
               <button
                 onClick={() => setLang(lang === "bn" ? "en" : "bn")}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs font-bold text-amber-300 cursor-pointer"

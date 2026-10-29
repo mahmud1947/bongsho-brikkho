@@ -7,6 +7,7 @@ import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
 import MemberProfileModal from "@/components/MemberProfileModal";
 import MemberFormModal from "@/components/MemberFormModal";
+import AdminDeleteModal from "@/components/AdminDeleteModal";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const {
@@ -23,6 +24,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     openEditModal,
     saveMember,
     deleteMember,
+    isAdmin,
+    loginAdmin,
+    deletePrompt,
+    openDeletePrompt,
+    closeDeletePrompt,
   } = useFamily();
 
   const stats = useMemo(() => {
@@ -125,7 +131,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         onSelectMember={(m) => setSelectedMember(m)}
         onEditMember={(m) => openEditModal(m)}
         onAddChild={(parent) => openAddModal(parent)}
-        onDeleteMember={(id) => deleteMember(id)}
+        onDeleteMember={(id) => {
+          const m = members.find((x) => x.id === id);
+          const memberName = m ? (lang === "bn" ? m.nameBn : m.nameEn) : undefined;
+          openDeletePrompt({
+            title: lang === "bn" ? "সদস্য মুছে ফেলুন" : "Delete Member",
+            itemName: memberName,
+            onConfirm: async () => {
+              await deleteMember(id);
+              setSelectedMember(null);
+            },
+          });
+        }}
       />
 
       <MemberFormModal
@@ -138,6 +155,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         editingMember={editingMember}
         defaultParent={defaultParentForAdd}
       />
+
+      {deletePrompt && (
+        <AdminDeleteModal
+          isOpen={deletePrompt.isOpen}
+          title={deletePrompt.title}
+          itemName={deletePrompt.itemName}
+          isAdmin={isAdmin}
+          lang={lang}
+          onClose={closeDeletePrompt}
+          onConfirm={deletePrompt.onConfirm}
+          onLoginAdmin={loginAdmin}
+        />
+      )}
     </div>
   );
 }

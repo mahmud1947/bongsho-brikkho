@@ -19,6 +19,8 @@ import {
   AlertCircle,
   MessageSquare,
   Share2,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { BloodGroup } from "@/types/family";
@@ -96,6 +98,9 @@ export default function ProfilePage() {
     openAddModal,
     openEditModal,
     setSelectedMember,
+    isAdmin,
+    logoutAdmin,
+    openDeletePrompt,
   } = useFamily();
 
   const [usernameInput, setUsernameInput] = useState("");
@@ -1019,6 +1024,59 @@ export default function ProfilePage() {
                 <span className="text-xs text-stone-400">-</span>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Admin Access / Delete Permission Section */}
+        <div className="pt-4 border-t border-stone-200">
+          <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  isAdmin ? "bg-amber-100 text-amber-900 border border-amber-300" : "bg-stone-200 text-stone-700"
+                }`}
+              >
+                {isAdmin ? <ShieldCheck className="w-5 h-5 text-amber-700" /> : <Lock className="w-4 h-4 text-stone-600" />}
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                  <span>{lang === "bn" ? "অ্যাডমিন অনুমতি" : "Admin Permission"}</span>
+                  {isAdmin && (
+                    <span className="px-1.5 py-0.2 rounded bg-amber-400 text-emerald-950 font-extrabold text-[10px]">
+                      VERIFIED
+                    </span>
+                  )}
+                </h4>
+                <p className="text-[11px] text-stone-500">
+                  {isAdmin
+                    ? (lang === "bn" ? "আপনি অ্যাডমিন হিসেবে লগইন আছেন (ডিলিট করতে পারবেন)" : "Logged in as Admin (can delete)")
+                    : (lang === "bn" ? "ডিলিট করার জন্য পাসওয়ার্ড প্রয়োজন" : "Password required to delete")}
+                </p>
+              </div>
+            </div>
+
+            {isAdmin ? (
+              <button
+                onClick={logoutAdmin}
+                className="px-3 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold cursor-pointer transition"
+              >
+                {lang === "bn" ? "লগআউট" : "Logout"}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  openDeletePrompt({
+                    title: lang === "bn" ? "অ্যাডমিন লগইন" : "Admin Login",
+                    itemName: undefined,
+                    onConfirm: async () => {},
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-bold shadow cursor-pointer transition"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>{lang === "bn" ? "অ্যাডমিন লগইন" : "Admin Login"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

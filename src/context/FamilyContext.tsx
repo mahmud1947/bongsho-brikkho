@@ -21,6 +21,8 @@ import {
 } from "@/types/family";
 
 const USERNAME_KEY = "bongsho_current_username";
+const ADMIN_PASSWORD = "Mahmud2026";
+const ADMIN_STORAGE_KEY = "bongsho_is_admin";
 
 interface FamilyContextType {
   lang: Language;
@@ -50,6 +52,21 @@ interface FamilyContextType {
   deleteGalleryItem: (id: string) => Promise<void>;
   addNotice: (notice: FamilyNotice) => Promise<void>;
   deleteNotice: (id: string) => Promise<void>;
+  isAdmin: boolean;
+  loginAdmin: (password: string) => boolean;
+  logoutAdmin: () => void;
+  deletePrompt: {
+    isOpen: boolean;
+    title?: string;
+    itemName?: string;
+    onConfirm: () => Promise<void>;
+  } | null;
+  openDeletePrompt: (options: {
+    title?: string;
+    itemName?: string;
+    onConfirm: () => Promise<void>;
+  }) => void;
+  closeDeletePrompt: () => void;
   exportJson: () => void;
   importJson: (file: File) => void;
   resetData: () => Promise<void>;
@@ -76,10 +93,58 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [defaultParentForAdd, setDefaultParentForAdd] = useState<FamilyMember | null>(null);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [deletePrompt, setDeletePrompt] = useState<{
+    isOpen: boolean;
+    title?: string;
+    itemName?: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
+
   useEffect(() => {
     const savedUser = localStorage.getItem(USERNAME_KEY);
     if (savedUser) setCurrentUsername(savedUser);
+
+    try {
+      const savedAdmin = sessionStorage.getItem(ADMIN_STORAGE_KEY);
+      if (savedAdmin === "true") setIsAdmin(true);
+    } catch (e) {}
   }, []);
+
+  const loginAdmin = (password: string): boolean => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      try {
+        sessionStorage.setItem(ADMIN_STORAGE_KEY, "true");
+      } catch (e) {}
+      return true;
+    }
+    return false;
+  };
+
+  const logoutAdmin = () => {
+    setIsAdmin(false);
+    try {
+      sessionStorage.removeItem(ADMIN_STORAGE_KEY);
+    } catch (e) {}
+  };
+
+  const openDeletePrompt = (options: {
+    title?: string;
+    itemName?: string;
+    onConfirm: () => Promise<void>;
+  }) => {
+    setDeletePrompt({
+      isOpen: true,
+      title: options.title,
+      itemName: options.itemName,
+      onConfirm: options.onConfirm,
+    });
+  };
+
+  const closeDeletePrompt = () => {
+    setDeletePrompt(null);
+  };
 
   // Real-time Firestore subscriptions across all devices
   useEffect(() => {
@@ -267,6 +332,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         deleteGalleryItem,
         addNotice,
         deleteNotice,
+        isAdmin,
+        loginAdmin,
+        logoutAdmin,
+        deletePrompt,
+        openDeletePrompt,
+        closeDeletePrompt,
         exportJson,
         importJson,
         resetData,
