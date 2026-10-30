@@ -777,17 +777,21 @@ export default function MemberFormModal({
               )}
             </div>
 
-            {/* Social Media Link */}
+            {/* Social Media Link / Instagram ID */}
             <div className="col-span-2">
               <label className="flex items-center gap-1 text-[11px] font-bold text-stone-600 mb-1">
                 <Share2 className="w-3 h-3 text-blue-600" />
-                <span>{lang === "bn" ? "সোশ্যাল" : "Social Link"}</span>
+                <span>{lang === "bn" ? "সোশ্যাল লিংক / ইনস্টাগ্রাম আইডি" : "Social Link / Instagram ID"}</span>
               </label>
               <input
-                type="url"
+                type="text"
                 value={socialLink}
                 onChange={(e) => setSocialLink(e.target.value)}
-                placeholder="https://facebook.com/..."
+                placeholder={
+                  lang === "bn"
+                    ? "fb.com/..., instagram id, বা প্রোফাইল লিংক..."
+                    : "fb.com/..., instagram id, or profile link..."
+                }
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-xs"
               />
             </div>

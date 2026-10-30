@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Search, MapPin, Briefcase, Phone, Filter, UserPlus, MessageSquare, Share2 } from "lucide-react";
-import { BloodGroup, FamilyBranch, FamilyMember, Language } from "@/types/family";
+import { BloodGroup, FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
 
 interface MemberDirectoryProps {
   members: FamilyMember[];
@@ -220,7 +220,7 @@ export default function MemberDirectory({
                       )}
                       {m.socialLink && (
                         <a
-                          href={m.socialLink.startsWith("http") ? m.socialLink : `https://${m.socialLink}`}
+                          href={formatSocialUrl(m.socialLink)}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}

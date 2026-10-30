@@ -17,7 +17,7 @@ import {
   ArrowUpRight,
   Globe,
 } from "lucide-react";
-import { FamilyBranch, FamilyMember, Language } from "@/types/family";
+import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
 
 interface MemberProfileModalProps {
   member: FamilyMember | null;
@@ -198,7 +198,7 @@ export default function MemberProfileModal({
 
             {member.socialLink && (
               <a
-                href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                href={formatSocialUrl(member.socialLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="col-span-2 flex items-center gap-2.5 p-2.5 rounded-xl bg-blue-50 border border-blue-200 font-bold text-blue-900 hover:bg-blue-100 transition"

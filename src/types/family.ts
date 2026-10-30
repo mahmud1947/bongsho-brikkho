@@ -105,3 +105,46 @@ export interface FamilyNotice {
   postedByEn: string;
   isPinned?: boolean;
 }
+
+export function formatSocialUrl(raw?: string): string {
+  if (!raw) return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  // 1. Full URL with protocol
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  // 2. Starts with @ (Instagram / social handle)
+  if (trimmed.startsWith("@")) {
+    const handle = trimmed.replace(/^@+/, "").trim();
+    return `https://instagram.com/${handle}`;
+  }
+
+  // 3. Starts with www.
+  if (/^www\./i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  // 4. Starts with a known social domain (fb.com, facebook.com, instagram.com, etc.)
+  if (
+    /^(fb|facebook|instagram|instagr|twitter|x|tiktok|linkedin|youtube|github|wa|telegram|t)\.(com|am|me|co)\b/i.test(
+      trimmed
+    )
+  ) {
+    return `https://${trimmed}`;
+  }
+
+  // 5. Contains a known top-level domain with a path (e.g. site.com/user, profile.me/id)
+  if (
+    /^[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|org|net|me|io|co|info|app|link|xyz|bd|uk|us)(\/|$)/i.test(
+      trimmed
+    )
+  ) {
+    return `https://${trimmed}`;
+  }
+
+  // 6. Otherwise treated as an Instagram username/ID (e.g., "mahmud2026", "shofik_uddin", "user.name")
+  return `https://instagram.com/${trimmed}`;
+}

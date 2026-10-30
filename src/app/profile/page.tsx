@@ -23,7 +23,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
-import { BloodGroup } from "@/types/family";
+import { BloodGroup, formatSocialUrl } from "@/types/family";
 import AdminLoginCard from "@/components/AdminLoginCard";
 
 const BLOOD_GROUPS: BloodGroup[] = [
@@ -625,17 +625,21 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Social Media Link */}
+            {/* Social Media Link / Instagram ID */}
             <div className="col-span-2">
               <label className="flex items-center gap-1 text-[11px] font-bold text-stone-600 mb-1">
                 <Share2 className="w-3 h-3 text-blue-600" />
-                <span>{lang === "bn" ? "সোশ্যাল" : "Social Link"}</span>
+                <span>{lang === "bn" ? "সোশ্যাল লিংক / ইনস্টাগ্রাম আইডি" : "Social Link / Instagram ID"}</span>
               </label>
               <input
-                type="url"
+                type="text"
                 value={socialLink}
                 onChange={(e) => setSocialLink(e.target.value)}
-                placeholder="https://facebook.com/..."
+                placeholder={
+                  lang === "bn"
+                    ? "fb.com/..., instagram id, বা প্রোফাইল লিংক..."
+                    : "fb.com/..., instagram id, or profile link..."
+                }
                 className="w-full px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-xs"
               />
             </div>
@@ -933,7 +937,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-50 border border-blue-200 font-bold text-blue-950">
               <Share2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
               <a
-                href={currentUserProfile.socialLink.startsWith("http") ? currentUserProfile.socialLink : `https://${currentUserProfile.socialLink}`}
+                href={formatSocialUrl(currentUserProfile.socialLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="truncate hover:underline text-blue-800"

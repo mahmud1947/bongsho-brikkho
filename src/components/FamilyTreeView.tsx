@@ -17,7 +17,7 @@ import {
   MessageSquare,
   Share2,
 } from "lucide-react";
-import { FamilyBranch, FamilyMember, Language } from "@/types/family";
+import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
 
 interface FamilyTreeViewProps {
   members: FamilyMember[];
@@ -438,7 +438,7 @@ export default function FamilyTreeView({
 
                   {member.socialLink && (
                     <a
-                      href={member.socialLink}
+                      href={formatSocialUrl(member.socialLink)}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -556,7 +556,7 @@ export default function FamilyTreeView({
                       )}
                       {member.socialLink && (
                         <a
-                          href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                          href={formatSocialUrl(member.socialLink)}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -741,7 +741,7 @@ export default function FamilyTreeView({
                     )}
                     {member.socialLink && (
                       <a
-                        href={member.socialLink.startsWith("http") ? member.socialLink : `https://${member.socialLink}`}
+                        href={formatSocialUrl(member.socialLink)}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bongsho-brikkho-v3';
+const CACHE_NAME = 'bongsho-brikkho-v4';
 
 // Dynamic base resolution based on where the service worker is registered
 const getBaseScope = () => {
