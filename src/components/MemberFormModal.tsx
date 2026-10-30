@@ -519,7 +519,7 @@ export default function MemberFormModal({
             {/* Parent */}
             <div>
               <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "পিতা" : "Parent"}
+                {lang === "bn" ? "পিতা / মাতা" : "Parent (Father / Mother)"}
               </label>
               <select
                 value={parentId}
@@ -529,7 +529,7 @@ export default function MemberFormModal({
                 <option value="">{lang === "bn" ? "মূল (G1)" : "Root (G1)"}</option>
                 {existingMembers.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {lang === "bn" ? m.nameBn : m.nameEn} (G{m.generation})
+                    {lang === "bn" ? m.nameBn : m.nameEn} (G{m.generation} • {m.gender === "female" ? (lang === "bn" ? "মাতা" : "Mother") : (lang === "bn" ? "পিতা" : "Father")})
                   </option>
                 ))}
               </select>

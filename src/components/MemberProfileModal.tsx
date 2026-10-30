@@ -230,11 +230,15 @@ export default function MemberProfileModal({
             {parent && (
               <div>
                 <p className="text-xs font-bold text-stone-500 mb-1">
-                  {lang === "bn" ? "পিতা" : "Parent"}
+                  {parent.gender === "female"
+                    ? (lang === "bn" ? "মাতা" : "Mother")
+                    : parent.gender === "male"
+                    ? (lang === "bn" ? "পিতা" : "Father")
+                    : (lang === "bn" ? "পিতা / মাতা" : "Parent")}
                 </p>
                 <button
                   onClick={() => onSelectMember(parent)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-xs font-bold cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-xs font-bold cursor-pointer hover:bg-emerald-100 transition"
                 >
                   <span>{lang === "bn" ? parent.nameBn : parent.nameEn}</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
