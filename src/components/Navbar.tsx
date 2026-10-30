@@ -8,7 +8,7 @@ import {
   Users,
   User,
   BookOpen,
-  Bell,
+  MessageCircle,
   UserPlus,
   Globe,
   RotateCcw,
@@ -24,7 +24,7 @@ export default function Navbar() {
     openAddModal,
     resetData,
     members,
-    notices,
+    chatMessages,
     isAdmin,
     logoutAdmin,
   } = useFamily();
@@ -56,11 +56,11 @@ export default function Navbar() {
       icon: <BookOpen className="w-4 h-4" />,
     },
     {
-      href: "/notices",
-      labelBn: "নোটিশ",
-      labelEn: "Notices",
-      icon: <Bell className="w-4 h-4" />,
-      badge: notices.length,
+      href: "/chat",
+      labelBn: "চ্যাট",
+      labelEn: "Chat",
+      icon: <MessageCircle className="w-4 h-4" />,
+      badge: chatMessages.length || undefined,
     },
   ];
 

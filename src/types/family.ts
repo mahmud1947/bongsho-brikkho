@@ -126,6 +126,14 @@ export interface FamilyNotice {
   isPinned?: boolean;
 }
 
+export interface FamilyChatMessage {
+  id: string;
+  text: string;
+  authorUsername: string;
+  authorName: string;
+  createdAt: string;
+}
+
 export function formatSocialUrl(raw?: string): string {
   if (!raw) return "";
   const trimmed = raw.trim();

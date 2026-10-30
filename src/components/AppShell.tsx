@@ -58,7 +58,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-[#f8f7f4] pb-20 md:pb-0">
       <Navbar />
 
-      {/* Single-Word Stats Strip: Only shown on main Family Tree page, hidden on Profile / Members / History / Notices */}
+      {/* Single-Word Stats Strip: Only shown on main Family Tree page. */}
       {isTreePage && (
         <section className="bg-emerald-900 text-white border-b border-emerald-800">
           <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2.5">

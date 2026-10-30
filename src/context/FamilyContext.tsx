@@ -13,6 +13,7 @@ import { db } from "@/lib/firebase";
 import { initialBranches } from "@/data/initialFamilyData";
 import {
   FamilyBranch,
+  FamilyChatMessage,
   FamilyMember,
   FamilyNotice,
   GalleryItem,
@@ -34,6 +35,7 @@ interface FamilyContextType {
   timeline: TimelineEvent[];
   gallery: GalleryItem[];
   notices: FamilyNotice[];
+  chatMessages: FamilyChatMessage[];
   currentUsername: string | null;
   currentUserProfile: UserProfile | null;
   loginUsername: (username: string) => void;
@@ -55,6 +57,8 @@ interface FamilyContextType {
   deleteGalleryItem: (id: string) => Promise<void>;
   addNotice: (notice: FamilyNotice) => Promise<void>;
   deleteNotice: (id: string) => Promise<void>;
+  sendChatMessage: (message: FamilyChatMessage) => Promise<void>;
+  deleteChatMessage: (id: string) => Promise<void>;
   isAdmin: boolean;
   loginAdmin: (password: string) => boolean;
   logoutAdmin: () => void;
@@ -89,6 +93,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [notices, setNotices] = useState<FamilyNotice[]>([]);
+  const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>([]);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
 
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -207,11 +212,18 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       setNotices(list);
     });
 
+    const unsubChatMessages = onSnapshot(collection(db, "chat_messages"), (snap) => {
+      const list = snap.docs.map((d) => d.data() as FamilyChatMessage);
+      list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      setChatMessages(list);
+    });
+
     return () => {
       unsubMembers();
       unsubTimeline();
       unsubGallery();
       unsubNotices();
+      unsubChatMessages();
     };
   }, []);
 
@@ -319,9 +331,17 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     await deleteDoc(doc(db, "notices", id));
   };
 
+  const sendChatMessage = async (message: FamilyChatMessage) => {
+    await setDoc(doc(db, "chat_messages", message.id), cleanData(message));
+  };
+
+  const deleteChatMessage = async (id: string) => {
+    await deleteDoc(doc(db, "chat_messages", id));
+  };
+
   const exportJson = () => {
     const blob = new Blob(
-      [JSON.stringify({ members, timeline, gallery, notices }, null, 2)],
+      [JSON.stringify({ members, timeline, gallery, notices, chatMessages }, null, 2)],
       { type: "application/json" }
     );
     const url = URL.createObjectURL(blob);
@@ -357,6 +377,11 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
             await setDoc(doc(db, "notices", n.id), cleanData(n));
           }
         }
+        if (Array.isArray(data.chatMessages)) {
+          for (const message of data.chatMessages) {
+            await setDoc(doc(db, "chat_messages", message.id), cleanData(message));
+          }
+        }
       } catch (err) {
         console.error(err);
       }
@@ -366,7 +391,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
   const resetData = async () => {
     if (window.confirm(lang === "bn" ? "সব ডেটা মুছে ফেলবেন?" : "Clear all data?")) {
-      for (const colName of ["members", "timeline", "gallery", "notices"]) {
+      for (const colName of ["members", "timeline", "gallery", "notices", "chat_messages"]) {
         const snap = await getDocs(collection(db, colName));
         for (const d of snap.docs) {
           await deleteDoc(doc(db, colName, d.id));
@@ -385,6 +410,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         timeline,
         gallery,
         notices,
+        chatMessages,
         currentUsername,
         currentUserProfile,
         loginUsername,
@@ -406,6 +432,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         deleteGalleryItem,
         addNotice,
         deleteNotice,
+        sendChatMessage,
+        deleteChatMessage,
         isAdmin,
         loginAdmin,
         logoutAdmin,
