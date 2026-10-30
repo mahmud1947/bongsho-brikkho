@@ -357,23 +357,16 @@ export default function FamilyTreeView({
         >
           <div className="flex items-start justify-between gap-2.5">
             <div className="min-w-0 flex-1 space-y-1.5">
-              {/* Gen • Sex • Status Header */}
+              {/* Gen & Status Header */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-950 text-amber-300">
                   G{member.generation}
                 </span>
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-stone-100 text-stone-700">
-                  {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
-                </span>
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                    member.isAlive
-                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                      : "bg-stone-100 text-stone-600 border border-stone-200"
-                  }`}
-                >
-                  {member.isAlive ? (lang === "bn" ? "জীবিত" : "Living") : (lang === "bn" ? "প্রয়াত" : "Late")}
-                </span>
+                {!member.isAlive && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-700 border border-stone-300">
+                    {lang === "bn" ? "প্রয়াত" : "Late"}
+                  </span>
+                )}
                 {member.bloodGroup && member.bloodGroup !== "Unknown" && (
                   <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700">
                     🩸 {member.bloodGroup}
@@ -511,14 +504,14 @@ export default function FamilyTreeView({
               highlightedId === member.id ? "ring-2 ring-amber-400" : ""
             }`}
           >
-            {/* Header: Gen • Sex | Status */}
+            {/* Header: Gen | Late Status only if deceased */}
             <div className={`px-2 py-1 rounded-t-[10px] flex items-center justify-between text-[10px] font-bold ${style.header}`}>
-              <span>
-                G{member.generation} • {member.gender === "female" ? (lang === "bn" ? "নারী" : "F") : (lang === "bn" ? "পুরুষ" : "M")}
-              </span>
-              <span className="text-[9px] px-1 rounded bg-white/20">
-                {member.isAlive ? (lang === "bn" ? "জীবিত" : "L") : (lang === "bn" ? "প্রয়াত" : "D")}
-              </span>
+              <span>G{member.generation}</span>
+              {!member.isAlive && (
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-black/25 text-stone-100">
+                  {lang === "bn" ? "প্রয়াত" : "Late"}
+                </span>
+              )}
             </div>
 
             <div className="p-2 space-y-1">
@@ -643,30 +636,14 @@ export default function FamilyTreeView({
             highlightedId === member.id ? "ring-4 ring-amber-400" : ""
           }`}
         >
-          {/* Header: Gen • Sex (Left) | Status (Right) */}
+          {/* Header: Gen (Left) | Late Status only if deceased (Right) */}
           <div className={`px-3 py-1.5 rounded-t-[14px] flex items-center justify-between text-[11px] font-bold ${style.header}`}>
-            <span className="flex items-center gap-1.5">
-              <span>G{member.generation}</span>
-              <span>•</span>
-              <span>
-                {member.gender === "female"
-                  ? lang === "bn"
-                    ? "নারী"
-                    : "Female"
-                  : lang === "bn"
-                  ? "পুরুষ"
-                  : "Male"}
+            <span>G{member.generation}</span>
+            {!member.isAlive && (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/25 text-stone-100">
+                {lang === "bn" ? "প্রয়াত" : "Late"}
               </span>
-            </span>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/20">
-              {member.isAlive
-                ? lang === "bn"
-                  ? "জীবিত"
-                  : "Living"
-                : lang === "bn"
-                ? "প্রয়াত"
-                : "Late"}
-            </span>
+            )}
           </div>
 
           <div className="p-3 space-y-2">

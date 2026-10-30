@@ -83,9 +83,11 @@ export default function MemberProfileModal({
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/20 text-stone-100">
                   {member.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
                 </span>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/15 text-amber-200">
-                  {member.isAlive ? (lang === "bn" ? "জীবিত" : "Living") : lang === "bn" ? "প্রয়াত" : "Late"}
-                </span>
+                {!member.isAlive && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/30 text-amber-200 border border-amber-300/30">
+                    {lang === "bn" ? "প্রয়াত" : "Late"}
+                  </span>
+                )}
               </div>
               <h2 className="text-lg font-bold truncate">
                 {lang === "bn" ? member.nameBn : member.nameEn}

@@ -151,9 +151,11 @@ export default function MemberDirectory({
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900">
                     G{m.generation}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-stone-700">
-                    {m.gender === "female" ? (lang === "bn" ? "নারী" : "Female") : (lang === "bn" ? "পুরুষ" : "Male")}
-                  </span>
+                  {!m.isAlive && (
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-700 border border-stone-300">
+                      {lang === "bn" ? "প্রয়াত" : "Late"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   {m.bloodGroup !== "Unknown" && (
@@ -161,9 +163,6 @@ export default function MemberDirectory({
                       🩸 {m.bloodGroup}
                     </span>
                   )}
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-stone-100 text-stone-600">
-                    {m.isAlive ? (lang === "bn" ? "জীবিত" : "Living") : lang === "bn" ? "প্রয়াত" : "Late"}
-                  </span>
                 </div>
               </div>
 
