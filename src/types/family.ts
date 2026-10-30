@@ -149,6 +149,55 @@ export function formatSocialUrl(raw?: string): string {
   return `https://instagram.com/${trimmed}`;
 }
 
+export function getCountryCode(country?: string): string {
+  if (!country) return "bd";
+  const c = country.trim().toLowerCase();
+  if (c.includes("বাংলাদেশ") || c.includes("bangladesh") || c === "bd") return "bd";
+  if (
+    c.includes("যুক্তরাজ্য") ||
+    c.includes("united kingdom") ||
+    c.includes("uk") ||
+    c.includes("ইউকে") ||
+    c.includes("britain") ||
+    c.includes("england") ||
+    c === "gb"
+  )
+    return "gb";
+  if (
+    c.includes("যুক্তরাষ্ট্র") ||
+    c.includes("united states") ||
+    c.includes("usa") ||
+    c.includes("ইউএসএ") ||
+    c.includes("america") ||
+    c === "us"
+  )
+    return "us";
+  if (c.includes("সৌদি") || c.includes("saudi") || c.includes("ksa") || c === "sa") return "sa";
+  if (
+    c.includes("আরব আমিরাত") ||
+    c.includes("uae") ||
+    c.includes("ইউএই") ||
+    c.includes("dubai") ||
+    c.includes("emirates") ||
+    c === "ae"
+  )
+    return "ae";
+  if (c.includes("কাতার") || c.includes("qatar") || c === "qa") return "qa";
+  if (c.includes("কুয়েত") || c.includes("kuwait") || c === "kw") return "kw";
+  if (c.includes("ওমান") || c.includes("oman") || c === "om") return "om";
+  if (c.includes("বাহরাইন") || c.includes("bahrain") || c === "bh") return "bh";
+  if (c.includes("মালয়েশিয়া") || c.includes("malaysia") || c === "my") return "my";
+  if (c.includes("সিঙ্গাপুর") || c.includes("singapore") || c === "sg") return "sg";
+  if (c.includes("কানাডা") || c.includes("canada") || c === "ca") return "ca";
+  if (c.includes("অস্ট্রেলিয়া") || c.includes("australia") || c === "au") return "au";
+  if (c.includes("ইতালি") || c.includes("italy") || c === "it") return "it";
+  if (c.includes("জার্মানি") || c.includes("germany") || c === "de") return "de";
+  if (c.includes("ফ্রান্স") || c.includes("france") || c === "fr") return "fr";
+  if (c.includes("ভারত") || c.includes("india") || c === "in") return "in";
+  if (c.includes("পাকিস্তান") || c.includes("pakistan") || c === "pk") return "pk";
+  return "bd";
+}
+
 export function getCountryFlag(country?: string): string {
   if (!country) return "🇧🇩";
   const c = country.trim().toLowerCase();

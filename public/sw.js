@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bongsho-brikkho-v8';
+const CACHE_NAME = 'bongsho-brikkho-v9';
 
 // Dynamic base resolution based on where the service worker is registered
 const getBaseScope = () => {
@@ -13,7 +13,25 @@ self.addEventListener('install', (event) => {
     `${base}favicon.png`,
     `${base}icons/icon-192x192.png`,
     `${base}icons/icon-512x512.png`,
-    `${base}icons/icon.svg`
+    `${base}icons/icon.svg`,
+    `${base}flags/bd.svg`,
+    `${base}flags/gb.svg`,
+    `${base}flags/us.svg`,
+    `${base}flags/sa.svg`,
+    `${base}flags/ae.svg`,
+    `${base}flags/qa.svg`,
+    `${base}flags/kw.svg`,
+    `${base}flags/om.svg`,
+    `${base}flags/bh.svg`,
+    `${base}flags/my.svg`,
+    `${base}flags/sg.svg`,
+    `${base}flags/ca.svg`,
+    `${base}flags/au.svg`,
+    `${base}flags/it.svg`,
+    `${base}flags/de.svg`,
+    `${base}flags/fr.svg`,
+    `${base}flags/in.svg`,
+    `${base}flags/pk.svg`
   ];
 
   event.waitUntil(

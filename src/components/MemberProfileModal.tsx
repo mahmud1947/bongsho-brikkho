@@ -18,6 +18,7 @@ import {
   Globe,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
+import CountryFlag from "@/components/CountryFlag";
 
 interface MemberProfileModalProps {
   member: FamilyMember | null;
@@ -112,7 +113,10 @@ export default function MemberProfileModal({
             </div>
 
             <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-100">
-              <Globe className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <CountryFlag
+                country={member.countryBn || member.countryEn}
+                className="w-5 h-3.5"
+              />
               <span className="font-semibold text-stone-800 truncate">
                 {lang === "bn"
                   ? member.countryBn || "বাংলাদেশ"

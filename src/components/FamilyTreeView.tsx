@@ -15,7 +15,8 @@ import {
   MessageSquare,
   Share2,
 } from "lucide-react";
-import { FamilyBranch, FamilyMember, Language, formatSocialUrl, getCountryFlag } from "@/types/family";
+import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
+import CountryFlag from "@/components/CountryFlag";
 
 interface FamilyTreeViewProps {
   members: FamilyMember[];
@@ -385,7 +386,10 @@ export default function FamilyTreeView({
               {/* Country, Present Address & Phone */}
               <div className="space-y-1 pt-1 text-xs text-stone-600">
                 <div className="flex items-center gap-1.5 text-stone-700 truncate">
-                  <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                  <CountryFlag
+                    country={member.countryBn || member.countryEn}
+                    className="w-4.5 h-3"
+                  />
                   <span className="font-semibold truncate">
                     {lang === "bn" ? (member.countryBn || "বাংলাদেশ") : (member.countryEn || "Bangladesh")}
                   </span>
@@ -496,7 +500,6 @@ export default function FamilyTreeView({
       rawNickname && rawNickname !== "None" && rawNickname !== "নেই" ? rawNickname : "";
     const displayLocation =
       lang === "bn" ? member.locationBn || member.locationEn : member.locationEn || member.locationBn;
-    const countryFlag = getCountryFlag(member.countryBn || member.countryEn);
     const genderLetter = member.gender === "female" ? "F" : "M";
 
     return (
@@ -521,9 +524,11 @@ export default function FamilyTreeView({
                   Late
                 </span>
               )}
-              <span className="text-xs leading-none" title={member.countryBn || member.countryEn || "Bangladesh"}>
-                {countryFlag}
-              </span>
+              <CountryFlag
+                country={member.countryBn || member.countryEn}
+                title={member.countryBn || member.countryEn || "Bangladesh"}
+                className="w-5 h-3.5 shadow-xs"
+              />
             </div>
           </div>
 
@@ -666,73 +671,68 @@ export default function FamilyTreeView({
 
   return (
     <div className="space-y-3">
-      {/* Clean Compact Toolbar */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-2.5 sm:p-3 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        {/* Left: View Switcher (Chart / List) & Density Switcher (Details / Compact) */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Chart / List Switcher */}
-          <div className="flex bg-stone-100 p-1 rounded-xl">
-            <button
-              onClick={() => setViewMode("canvas")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
-                viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
-              }`}
-            >
-              <Network className="w-3.5 h-3.5" />
-              <span>{lang === "bn" ? "চার্ট" : "Chart"}</span>
-            </button>
-            <button
-              onClick={() => setViewMode("mobile-tree")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
-                viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
-              }`}
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span>{lang === "bn" ? "লিস্ট" : "List"}</span>
-            </button>
-          </div>
+      {/* Clean Compact Toolbar - All in One Single Line on Mobile & Desktop */}
+      <div className="bg-white rounded-2xl border border-stone-200 p-2 sm:p-2.5 shadow-sm flex items-center gap-1.5 sm:gap-2.5 w-full">
+        {/* Left: View Switcher (Chart / List) */}
+        <div className="flex bg-stone-100 p-0.5 sm:p-1 rounded-xl flex-shrink-0">
+          <button
+            onClick={() => setViewMode("canvas")}
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
+              viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
+            }`}
+            title={lang === "bn" ? "চার্ট ভিউ" : "Chart View"}
+          >
+            <Network className="w-3.5 h-3.5" />
+            <span>{lang === "bn" ? "চার্ট" : "Chart"}</span>
+          </button>
+          <button
+            onClick={() => setViewMode("mobile-tree")}
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
+              viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
+            }`}
+            title={lang === "bn" ? "লিস্ট ভিউ" : "List View"}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span>{lang === "bn" ? "লিস্ট" : "List"}</span>
+          </button>
         </div>
 
-        {/* Right: Search, Fit Screen, & Zoom Controls */}
-        <div className="flex items-center gap-2 justify-between sm:justify-end">
-          <div className="relative flex-1 sm:w-56">
-            <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={lang === "bn" ? "সার্চ..." : "Search..."}
-              className="w-full pl-8 pr-2.5 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            />
-            {matchingMembers.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-stone-200 z-30 max-h-48 overflow-y-auto divide-y divide-stone-100">
-                {matchingMembers.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => focusMember(m)}
-                    className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-stone-800"
-                  >
-                    {lang === "bn" ? m.nameBn : m.nameEn}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {viewMode === "canvas" && (
-            <div className="flex items-center gap-1.5">
-              {/* 1-Tap Fit to Screen Button */}
-              <button
-                onClick={handleFitScreen}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer hover:bg-emerald-800 shadow-sm"
-                title={lang === "bn" ? "স্ক্রিনে ফিট করুন" : "Fit to screen"}
-              >
-                <Scan className="w-3.5 h-3.5" />
-                <span>{lang === "bn" ? "ফিট স্ক্রিন" : "Fit"}</span>
-              </button>
+        {/* Middle: Search Input */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={lang === "bn" ? "সার্চ..." : "Search..."}
+            className="w-full pl-7 sm:pl-8 pr-2.5 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-stone-50/50 focus:bg-white transition"
+          />
+          {matchingMembers.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-stone-200 z-30 max-h-48 overflow-y-auto divide-y divide-stone-100">
+              {matchingMembers.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => focusMember(m)}
+                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-stone-800 truncate"
+                >
+                  {lang === "bn" ? m.nameBn : m.nameEn}
+                </button>
+              ))}
             </div>
           )}
         </div>
+
+        {/* Right: Fit Screen Button */}
+        {viewMode === "canvas" && (
+          <button
+            onClick={handleFitScreen}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer hover:bg-emerald-800 shadow-sm flex-shrink-0"
+            title={lang === "bn" ? "স্ক্রিনে ফিট করুন" : "Fit to screen"}
+          >
+            <Scan className="w-3.5 h-3.5" />
+            <span>{lang === "bn" ? "ফিট" : "Fit"}</span>
+          </button>
+        )}
       </div>
 
       {/* Viewport: Mobile-tree (List) or Visual Canvas (Chart) */}
