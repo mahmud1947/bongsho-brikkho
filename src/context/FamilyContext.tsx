@@ -23,6 +23,7 @@ import {
 const USERNAME_KEY = "bongsho_current_username";
 const ADMIN_PASSWORD = "Mahmud2026";
 const ADMIN_STORAGE_KEY = "bongsho_is_admin";
+const LANG_STORAGE_KEY = "bongsho_preferred_language";
 
 interface FamilyContextType {
   lang: Language;
@@ -81,7 +82,7 @@ function cleanData<T extends object>(obj: T): T {
 }
 
 export function FamilyProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Language>("bn");
+  const [lang, setLangState] = useState<Language>("en");
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -101,9 +102,25 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     onConfirm: () => Promise<void>;
   } | null>(null);
 
+  const setLang = (newLang: Language) => {
+    setLangState(newLang);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, newLang);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem(USERNAME_KEY);
     if (savedUser) setCurrentUsername(savedUser);
+
+    try {
+      const savedLang = localStorage.getItem(LANG_STORAGE_KEY) as Language | null;
+      if (savedLang === "bn" || savedLang === "en") {
+        setLangState(savedLang);
+      } else {
+        setLangState("en");
+      }
+    } catch (e) {}
 
     try {
       const savedAdmin = sessionStorage.getItem(ADMIN_STORAGE_KEY);

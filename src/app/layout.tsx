@@ -55,7 +55,7 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="bn"
+      lang="en"
       className={`${hindSiliguri.variable} ${plusJakarta.variable}`}
     >
       <body className="min-h-screen antialiased selection:bg-amber-300 selection:text-emerald-950">
