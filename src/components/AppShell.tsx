@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import Link from "next/link";
-import { Users, Layers, GitBranch, HeartPulse, TreePine } from "lucide-react";
+import { Users, Layers, GitBranch, HeartPulse } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
 import MemberProfileModal from "@/components/MemberProfileModal";
@@ -92,35 +91,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
         {children}
       </main>
-
-      {/* Simple Footer with Individual Page Links */}
-      <footer className="bg-stone-900 text-stone-400 border-t border-stone-800 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <TreePine className="w-4 h-4 text-amber-400" />
-            <span className="font-bold text-stone-200">
-              {lang === "bn" ? "বংশবৃক্ষ" : "Bongsho Brikkho"}
-            </span>
-          </div>
-          <div className="flex items-center gap-4 font-semibold">
-            <Link href="/" className="hover:text-amber-300">
-              {lang === "bn" ? "বৃক্ষ" : "Tree"}
-            </Link>
-            <Link href="/directory" className="hover:text-amber-300">
-              {lang === "bn" ? "সদস্য" : "Members"}
-            </Link>
-            <Link href="/profile" className="hover:text-amber-300">
-              {lang === "bn" ? "প্রোফাইল" : "Profile"}
-            </Link>
-            <Link href="/heritage" className="hover:text-amber-300">
-              {lang === "bn" ? "ইতিহাস" : "History"}
-            </Link>
-            <Link href="/notices" className="hover:text-amber-300">
-              {lang === "bn" ? "নোটিশ" : "Notices"}
-            </Link>
-          </div>
-        </div>
-      </footer>
 
       <MemberProfileModal
         member={selectedMember}
