@@ -14,6 +14,7 @@ import {
   Scan,
   MessageSquare,
   Share2,
+  Info,
 } from "lucide-react";
 import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
 import CountryFlag from "@/components/CountryFlag";
@@ -38,6 +39,7 @@ export default function FamilyTreeView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
 
   const formatWhatsappUrl = (phoneOrWa?: string) => {
     if (!phoneOrWa) return "";
@@ -102,21 +104,152 @@ export default function FamilyTreeView({
     return members.filter((m) => !m.parentId || !memberIds.has(m.parentId));
   }, [members]);
 
+  // G2 Members (the main family branches under Root)
+  const g2Members = useMemo(() => {
+    const list: FamilyMember[] = [];
+    rootMembers.forEach((r) => {
+      const children = childrenMap[r.id] || [];
+      list.push(...children);
+    });
+    if (list.length === 0) {
+      return members.filter((m) => m.generation === 2);
+    }
+    return list;
+  }, [rootMembers, childrenMap, members]);
+
+  // 1. Initial State: Only G1 & G2 open initially (all generation >= 2 with children start collapsed)
+  const [hasInitializedCollapse, setHasInitializedCollapse] = useState<boolean>(false);
+  useEffect(() => {
+    if (members.length > 0 && !hasInitializedCollapse) {
+      const rootSet = new Set(rootMembers.map((r) => r.id));
+      const initial: Record<string, boolean> = {};
+      members.forEach((m) => {
+        const kids = childrenMap[m.id] || [];
+        if (kids.length > 0 && !rootSet.has(m.id)) {
+          initial[m.id] = true;
+        }
+      });
+      setCollapsedIds(initial);
+      setHasInitializedCollapse(true);
+    }
+  }, [members, rootMembers, childrenMap, hasInitializedCollapse]);
+
+  // 2. Accordion expansion: Tapping a child expands only its family down and collapses sibling branches
+  const handleNodeTap = (member: FamilyMember, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    const visibleChildren = childrenMap[member.id] || [];
+    const hasChildren = visibleChildren.length > 0;
+
+    // Leaf node (no children) -> open profile modal directly
+    if (!hasChildren) {
+      onSelectMember(member);
+      return;
+    }
+
+    const isCurrentlyCollapsed = !!collapsedIds[member.id];
+
+    if (isCurrentlyCollapsed) {
+      // User is EXPANDING this member!
+      // Collapse all siblings under the same parent so only this child's family unfolds down
+      setCollapsedIds((prev) => {
+        const next = { ...prev };
+        if (member.parentId) {
+          const siblings = members.filter(
+            (m) => m.parentId === member.parentId && m.id !== member.id
+          );
+          const collapseRecursive = (pid: string) => {
+            next[pid] = true;
+            const kids = childrenMap[pid] || [];
+            kids.forEach((k) => collapseRecursive(k.id));
+          };
+          siblings.forEach((s) => collapseRecursive(s.id));
+        }
+        delete next[member.id];
+        return next;
+      });
+
+      // Update selected branch highlight if this member is in G2
+      if (g2Members.some((g) => g.id === member.id)) {
+        setSelectedBranchId(member.id);
+      }
+
+      setTimeout(() => {
+        const el = document.getElementById(`tree-node-${member.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        }
+      }, 100);
+    } else {
+      // User is COLLAPSING this member!
+      setCollapsedIds((prev) => ({
+        ...prev,
+        [member.id]: true,
+      }));
+    }
+  };
+
+  // 3. Branch Quick-Select: Open everyone in a selected branch in a single glance
+  const expandBranch = (g2MemberId: string) => {
+    const newCollapsed: Record<string, boolean> = {};
+
+    const getDescendantIds = (parentId: string): string[] => {
+      const children = childrenMap[parentId] || [];
+      let result: string[] = [];
+      children.forEach((c) => {
+        result.push(c.id);
+        result = result.concat(getDescendantIds(c.id));
+      });
+      return result;
+    };
+
+    const branchDescendantIds = new Set([g2MemberId, ...getDescendantIds(g2MemberId)]);
+    const rootSet = new Set(rootMembers.map((r) => r.id));
+
+    members.forEach((m) => {
+      const hasKids = (childrenMap[m.id] || []).length > 0;
+      if (hasKids) {
+        if (branchDescendantIds.has(m.id) || rootSet.has(m.id)) {
+          // Keep root and all members in this selected branch EXPANDED
+          delete newCollapsed[m.id];
+        } else {
+          // Collapse all other branches
+          newCollapsed[m.id] = true;
+        }
+      }
+    });
+
+    setCollapsedIds(newCollapsed);
+    setSelectedBranchId(g2MemberId);
+
+    setTimeout(() => {
+      const el = document.getElementById(`tree-node-${g2MemberId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+    }, 150);
+  };
+
+  const resetToOverview = () => {
+    const rootSet = new Set(rootMembers.map((r) => r.id));
+    const initial: Record<string, boolean> = {};
+    members.forEach((m) => {
+      const kids = childrenMap[m.id] || [];
+      if (kids.length > 0 && !rootSet.has(m.id)) {
+        initial[m.id] = true;
+      }
+    });
+    setCollapsedIds(initial);
+    setSelectedBranchId("all");
+    handleFitScreen();
+  };
+
   const toggleCollapse = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setCollapsedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const expandAll = () => setCollapsedIds({});
-  const collapseCompact = () => {
-    const next: Record<string, boolean> = {};
-    members.forEach((m) => {
-      if (m.generation >= 2 && (childrenMap[m.id]?.length || 0) > 0) {
-        next[m.id] = true;
-      }
-    });
-    setCollapsedIds(next);
-  };
 
   // 1-Tap Fit to Screen
   const handleFitScreen = () => {
@@ -347,7 +480,7 @@ export default function FamilyTreeView({
       <div key={member.id} className="w-full">
         <div
           id={`tree-node-${member.id}`}
-          onClick={() => onSelectMember(member)}
+          onClick={(e) => handleNodeTap(member, e)}
           className={`rounded-2xl bg-white border border-stone-200 border-l-4 ${style.left} p-3.5 shadow-sm hover:shadow-md transition cursor-pointer ${
             highlightedId === member.id ? "ring-2 ring-amber-400" : ""
           }`}
@@ -373,7 +506,14 @@ export default function FamilyTreeView({
 
               {/* Name */}
               <div>
-                <h3 className="font-bold text-stone-900 text-base leading-tight truncate">
+                <h3
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMember(member);
+                  }}
+                  className="font-bold text-stone-900 text-base leading-tight truncate hover:text-emerald-700 cursor-pointer"
+                  title={lang === "bn" ? "প্রোফাইল দেখতে ক্লিক করুন" : "Click to view profile"}
+                >
                   {lang === "bn" ? member.nameBn : member.nameEn}
                 </h3>
                 {(member.nicknameBn || member.nicknameEn) && (
@@ -462,7 +602,7 @@ export default function FamilyTreeView({
               {hasChildren && (
                 <button
                   type="button"
-                  onClick={(e) => toggleCollapse(member.id, e)}
+                  onClick={(e) => handleNodeTap(member, e)}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold hover:bg-emerald-800 shadow-sm"
                 >
                   <span>{visibleChildren.length}</span>
@@ -506,7 +646,7 @@ export default function FamilyTreeView({
       <div key={member.id} className="flex flex-col items-center relative px-1">
         <div
           id={`tree-node-${member.id}`}
-          onClick={() => onSelectMember(member)}
+          onClick={(e) => handleNodeTap(member, e)}
           className={`w-44 sm:w-48 rounded-xl bg-white border-2 ${style.border} shadow-sm hover:shadow-lg transition cursor-pointer relative ${
             highlightedId === member.id ? "ring-2 ring-amber-400" : ""
           }`}
@@ -533,11 +673,31 @@ export default function FamilyTreeView({
           </div>
 
           <div className="p-2 space-y-1">
-            {/* Name & Nickname */}
+            {/* Name & Nickname + Profile Info */}
             <div>
-              <h3 className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate">
-                {displayName}
-              </h3>
+              <div className="flex items-center justify-between gap-1">
+                <h3
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMember(member);
+                  }}
+                  className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate hover:text-emerald-700 cursor-pointer flex-1"
+                  title={lang === "bn" ? "প্রোফাইল দেখতে ক্লিক করুন" : "Click to view profile"}
+                >
+                  {displayName}
+                </h3>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMember(member);
+                  }}
+                  className="p-0.5 rounded text-stone-400 hover:text-emerald-800 hover:bg-emerald-50 transition cursor-pointer flex-shrink-0"
+                  title={lang === "bn" ? "প্রোফাইল দেখুন" : "View Profile"}
+                >
+                  <Info className="w-3 h-3" />
+                </button>
+              </div>
               {displayNickname && (
                 <p className="text-[10px] text-emerald-800 font-medium truncate -mt-0.5">
                   ({displayNickname})
@@ -612,16 +772,17 @@ export default function FamilyTreeView({
             </div>
           </div>
 
-            {hasChildren && (
-              <button
-                type="button"
-                onClick={(e) => toggleCollapse(member.id, e)}
-                className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-1.5 py-0.2 rounded-full bg-emerald-900 text-amber-300 text-[9px] font-bold shadow cursor-pointer hover:bg-emerald-800"
-              >
-                <span>{visibleChildren.length}</span>
-                {isCollapsed ? <ChevronRight className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
-              </button>
-            )}
+          {hasChildren && (
+            <button
+              type="button"
+              onClick={(e) => handleNodeTap(member, e)}
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-900 text-amber-300 text-[10px] font-bold shadow-md cursor-pointer hover:bg-emerald-800 active:scale-95 transition"
+              title={isCollapsed ? (lang === "bn" ? "পরিবার নিচে দেখুন" : "Expand family") : (lang === "bn" ? "পরিবার বন্ধ করুন" : "Collapse")}
+            >
+              <span>{visibleChildren.length}</span>
+              {isCollapsed ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronRight className="w-2.5 h-2.5" />}
+            </button>
+          )}
           </div>
 
           {hasChildren && !isCollapsed && (
@@ -734,6 +895,65 @@ export default function FamilyTreeView({
           </button>
         )}
       </div>
+
+      {/* Branch Quick-Select Pill Bar (Requirement 3: নির্দিষ্ট শাখা সিলেক্ট করে এক পলকেই সেই শাখার সবাই দেখতে পাবেন) */}
+      {g2Members.length > 0 && (
+        <div className="bg-white rounded-xl border border-stone-200 px-2.5 py-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1 text-stone-500 text-xs font-bold flex-shrink-0 pr-1.5 border-r border-stone-200">
+            <span className="text-emerald-700">🌿</span>
+            <span>{lang === "bn" ? "শাখা" : "Branch"}</span>
+          </div>
+
+          {/* All / Overview Button (G1 and G2 only) */}
+          <button
+            type="button"
+            onClick={resetToOverview}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
+              selectedBranchId === "all"
+                ? "bg-emerald-900 text-amber-300 shadow-sm"
+                : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
+            }`}
+          >
+            {lang === "bn" ? "মূল গাছ (G1 ও G2)" : "Root (G1 & G2)"}
+          </button>
+
+          {/* Individual G2 Branch Buttons */}
+          {g2Members.map((g2) => {
+            const isSelected = selectedBranchId === g2.id;
+            const branchStyle = getBranchStyle(g2.branchId);
+            const branchName = lang === "bn" ? g2.nameBn : g2.nameEn;
+            const childCount = (childrenMap[g2.id] || []).length;
+
+            return (
+              <button
+                key={g2.id}
+                type="button"
+                onClick={() => expandBranch(g2.id)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
+                  isSelected
+                    ? "bg-amber-400 text-emerald-950 shadow-sm ring-2 ring-emerald-900"
+                    : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
+                }`}
+                title={lang === "bn" ? `${branchName}-এর পরিবার দেখুন` : `View ${branchName}'s Family`}
+              >
+                <span className={`w-2 h-2 rounded-full ${branchStyle.header.split(" ")[0] || "bg-emerald-600"}`} />
+                <span>{branchName}</span>
+                {childCount > 0 && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected
+                        ? "bg-emerald-950 text-amber-300 font-bold"
+                        : "bg-stone-200 text-stone-700"
+                    }`}
+                  >
+                    {childCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Viewport: Mobile-tree (List) or Visual Canvas (Chart) */}
       {viewMode === "mobile-tree" ? (
