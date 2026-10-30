@@ -516,11 +516,6 @@ export default function FamilyTreeView({
                 >
                   {lang === "bn" ? member.nameBn : member.nameEn}
                 </h3>
-                {(member.nicknameBn || member.nicknameEn) && (
-                  <p className="text-xs text-amber-700 font-semibold truncate">
-                    ({lang === "bn" ? member.nicknameBn : member.nicknameEn})
-                  </p>
-                )}
               </div>
 
               {/* Country, Present Address & Phone */}
@@ -634,10 +629,6 @@ export default function FamilyTreeView({
     const style = getBranchStyle(member.branchId);
 
     const displayName = lang === "bn" ? member.nameBn || member.nameEn : member.nameEn || member.nameBn;
-    const rawNickname =
-      (lang === "bn" ? member.nicknameBn || member.nicknameEn : member.nicknameEn || member.nicknameBn) || "";
-    const displayNickname =
-      rawNickname && rawNickname !== "None" && rawNickname !== "নেই" ? rawNickname : "";
     const displayLocation =
       lang === "bn" ? member.locationBn || member.locationEn : member.locationEn || member.locationBn;
     const genderLetter = member.gender === "female" ? "F" : "M";
@@ -673,7 +664,7 @@ export default function FamilyTreeView({
           </div>
 
           <div className="p-2 space-y-1">
-            {/* Name & Nickname + Profile Info */}
+            {/* Name + Profile Info */}
             <div>
               <div className="flex items-center justify-between gap-1">
                 <h3
@@ -698,11 +689,6 @@ export default function FamilyTreeView({
                   <Info className="w-3 h-3" />
                 </button>
               </div>
-              {displayNickname && (
-                <p className="text-[10px] text-emerald-800 font-medium truncate -mt-0.5">
-                  ({displayNickname})
-                </p>
-              )}
             </div>
 
             {/* Address (Country text omitted since flag is in header) */}
@@ -904,7 +890,25 @@ export default function FamilyTreeView({
             <span>{lang === "bn" ? "শাখা" : "Branch"}</span>
           </div>
 
-          {/* All / Overview Button (G1 and G2 only) */}
+          {/* 1. All Button (Fully opens all branches) */}
+          <button
+            type="button"
+            onClick={() => {
+              expandAll();
+              setSelectedBranchId("full-tree");
+              handleFitScreen();
+            }}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
+              selectedBranchId === "full-tree"
+                ? "bg-emerald-900 text-amber-300 shadow-sm"
+                : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
+            }`}
+            title={lang === "bn" ? "সব শাখা একসাথে সম্পূর্ণ দেখুন" : "View all branches together"}
+          >
+            {lang === "bn" ? "সব (All)" : "All"}
+          </button>
+
+          {/* 2. G1 & G2 Overview Button */}
           <button
             type="button"
             onClick={resetToOverview}
@@ -913,8 +917,9 @@ export default function FamilyTreeView({
                 ? "bg-emerald-900 text-amber-300 shadow-sm"
                 : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
             }`}
+            title={lang === "bn" ? "শুধু মূল ও প্রথম প্রজন্ম দেখুন" : "View G1 & G2 overview"}
           >
-            {lang === "bn" ? "মূল গাছ (G1 ও G2)" : "Root (G1 & G2)"}
+            {lang === "bn" ? "G1 ও G2" : "G1 & G2"}
           </button>
 
           {/* Individual G2 Branch Buttons */}

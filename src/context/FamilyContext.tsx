@@ -18,6 +18,7 @@ import {
   GalleryItem,
   Language,
   TimelineEvent,
+  UserProfile,
 } from "@/types/family";
 
 const USERNAME_KEY = "bongsho_current_username";
@@ -34,9 +35,10 @@ interface FamilyContextType {
   gallery: GalleryItem[];
   notices: FamilyNotice[];
   currentUsername: string | null;
-  currentUserProfile: FamilyMember | null;
+  currentUserProfile: UserProfile | null;
   loginUsername: (username: string) => void;
   logoutUsername: () => void;
+  saveUserProfile: (profile: UserProfile) => Promise<void>;
   selectedMember: FamilyMember | null;
   setSelectedMember: (m: FamilyMember | null) => void;
   isFormOpen: boolean;
@@ -166,7 +168,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   // Real-time Firestore subscriptions across all devices
   useEffect(() => {
     const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
-      const list = snap.docs.map((d) => {
+      const rawList = snap.docs.map((d) => {
         const item = d.data() as FamilyMember;
         // Auto-heal gender for obvious female titles if improperly saved as male
         const isEvidentlyFemale =
@@ -184,6 +186,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         }
         return item;
       });
+      // Completely disconnect personal profiles from the tree
+      const list = rawList.filter((m) => !m.id.startsWith("user-"));
       list.sort((a, b) => a.generation - b.generation || a.id.localeCompare(b.id));
       setMembers(list);
     });
@@ -211,13 +215,47 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const currentUserProfile = useMemo(() => {
-    if (!currentUsername) return null;
-    const norm = currentUsername.trim().toLowerCase();
-    return (
-      members.find((m) => m.username?.toLowerCase() === norm) || null
-    );
-  }, [members, currentUsername]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
+
+  // Sync personal profile when username changes (completely separate from tree members)
+  useEffect(() => {
+    if (!currentUsername) {
+      setCurrentUserProfile(null);
+      return;
+    }
+
+    try {
+      const cached = localStorage.getItem(`bongsho_profile_${currentUsername}`);
+      if (cached) {
+        setCurrentUserProfile(JSON.parse(cached));
+      }
+    } catch (e) {}
+
+    const unsub = onSnapshot(doc(db, "user_profiles", currentUsername), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as UserProfile;
+        setCurrentUserProfile(data);
+        try {
+          localStorage.setItem(`bongsho_profile_${currentUsername}`, JSON.stringify(data));
+        } catch (e) {}
+      }
+    });
+
+    return () => unsub();
+  }, [currentUsername]);
+
+  const saveUserProfile = async (profile: UserProfile) => {
+    setCurrentUserProfile(profile);
+    try {
+      localStorage.setItem(`bongsho_profile_${profile.username}`, JSON.stringify(profile));
+    } catch (e) {}
+
+    try {
+      await setDoc(doc(db, "user_profiles", profile.username), profile, { merge: true });
+    } catch (err) {
+      console.warn("Could not save profile to firestore:", err);
+    }
+  };
 
   const loginUsername = (username: string) => {
     const norm = username.trim().toLowerCase().replace(/^@/, "");
@@ -228,6 +266,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
   const logoutUsername = () => {
     setCurrentUsername(null);
+    setCurrentUserProfile(null);
     localStorage.removeItem(USERNAME_KEY);
   };
 
@@ -350,6 +389,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         currentUserProfile,
         loginUsername,
         logoutUsername,
+        saveUserProfile,
         selectedMember,
         setSelectedMember,
         isFormOpen,

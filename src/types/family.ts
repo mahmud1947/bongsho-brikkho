@@ -67,6 +67,26 @@ export interface FamilyBranch {
   descriptionEn: string;
 }
 
+export interface UserProfile {
+  username: string;
+  nameBn: string;
+  nameEn: string;
+  gender: "male" | "female";
+  phone?: string;
+  whatsapp?: string;
+  socialLink?: string;
+  locationBn?: string;
+  locationEn?: string;
+  countryBn?: string;
+  countryEn?: string;
+  professionBn?: string;
+  professionEn?: string;
+  bloodGroup?: BloodGroup;
+  birthYear?: string;
+  bio?: string;
+  updatedAt?: string;
+}
+
 export interface TimelineEvent {
   id: string;
   yearBn: string;
