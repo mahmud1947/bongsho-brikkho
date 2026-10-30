@@ -2,9 +2,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   ChevronDown,
   ChevronRight,
   UserPlus,
@@ -57,6 +54,34 @@ export default function FamilyTreeView({
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const [isPinching, setIsPinching] = useState<boolean>(false);
+  const [showZoomBadge, setShowZoomBadge] = useState<boolean>(false);
+  const zoomBadgeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const zoomRef = useRef<number>(zoom);
+  zoomRef.current = zoom;
+
+  const [contentSize, setContentSize] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
+
+  // Track unscaled content size via ResizeObserver
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const updateSize = () => {
+      if (contentRef.current) {
+        setContentSize({
+          width: contentRef.current.scrollWidth,
+          height: contentRef.current.scrollHeight,
+        });
+      }
+    };
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(contentRef.current);
+    return () => ro.disconnect();
+  }, [members, collapsedIds, viewMode]);
+
   // Auto-fit on mobile screens on mount
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
@@ -102,12 +127,138 @@ export default function FamilyTreeView({
     const containerWidth = containerRef.current.clientWidth;
     const contentWidth = contentRef.current.scrollWidth;
     if (contentWidth > 0) {
-      const unscaledWidth = contentWidth / zoom;
-      const targetRatio = (containerWidth - 36) / unscaledWidth;
+      const targetRatio = (containerWidth - 32) / contentWidth;
       const newZoom = Math.min(1.2, Math.max(0.35, +targetRatio.toFixed(2)));
       setZoom(newZoom);
+      setShowZoomBadge(true);
+      if (zoomBadgeTimeoutRef.current) clearTimeout(zoomBadgeTimeoutRef.current);
+      zoomBadgeTimeoutRef.current = setTimeout(() => setShowZoomBadge(false), 1200);
     }
   };
+
+  // Native Two-Finger Pinch-to-Zoom & Trackpad Wheel Listener
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || viewMode !== "canvas") return;
+
+    let initialDist = 0;
+    let initialZoom = 1;
+    let startMidX = 0;
+    let startMidY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let isPinchActive = false;
+
+    // Double tap detection
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        initialDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        initialZoom = zoomRef.current;
+
+        const rect = container.getBoundingClientRect();
+        startMidX = (t0.clientX + t1.clientX) / 2 - rect.left;
+        startMidY = (t0.clientY + t1.clientY) / 2 - rect.top;
+        startScrollLeft = container.scrollLeft;
+        startScrollTop = container.scrollTop;
+
+        isPinchActive = true;
+        setIsPinching(true);
+        setShowZoomBadge(true);
+        if (zoomBadgeTimeoutRef.current) clearTimeout(zoomBadgeTimeoutRef.current);
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        const t = e.touches[0];
+        const dt = now - lastTapTime;
+        const dx = Math.abs(t.clientX - lastTapX);
+        const dy = Math.abs(t.clientY - lastTapY);
+
+        if (dt < 320 && dx < 25 && dy < 25) {
+          const target = e.target as HTMLElement | null;
+          if (!target?.closest("button") && !target?.closest("a")) {
+            if (zoomRef.current < 0.75) {
+              setZoom(1.0);
+            } else {
+              handleFitScreen();
+            }
+            setShowZoomBadge(true);
+            if (zoomBadgeTimeoutRef.current) clearTimeout(zoomBadgeTimeoutRef.current);
+            zoomBadgeTimeoutRef.current = setTimeout(() => setShowZoomBadge(false), 1200);
+          }
+        }
+        lastTapTime = now;
+        lastTapX = t.clientX;
+        lastTapY = t.clientY;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && isPinchActive && initialDist > 5) {
+        if (e.cancelable) e.preventDefault();
+
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const currentDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const scale = currentDist / initialDist;
+        const targetZoom = Math.min(2.0, Math.max(0.3, +(initialZoom * scale).toFixed(2)));
+
+        const rect = container.getBoundingClientRect();
+        const currentMidX = (t0.clientX + t1.clientX) / 2 - rect.left;
+        const currentMidY = (t0.clientY + t1.clientY) / 2 - rect.top;
+
+        const contentX = (startScrollLeft + startMidX) / initialZoom;
+        const contentY = (startScrollTop + startMidY) / initialZoom;
+
+        container.scrollLeft = contentX * targetZoom - currentMidX;
+        container.scrollTop = contentY * targetZoom - currentMidY;
+
+        setZoom(targetZoom);
+        setShowZoomBadge(true);
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2 && isPinchActive) {
+        isPinchActive = false;
+        setIsPinching(false);
+        if (zoomBadgeTimeoutRef.current) clearTimeout(zoomBadgeTimeoutRef.current);
+        zoomBadgeTimeoutRef.current = setTimeout(() => {
+          setShowZoomBadge(false);
+        }, 1200);
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.008;
+        const targetZoom = Math.min(2.0, Math.max(0.3, +(zoomRef.current + delta).toFixed(2)));
+        setZoom(targetZoom);
+        setShowZoomBadge(true);
+        if (zoomBadgeTimeoutRef.current) clearTimeout(zoomBadgeTimeoutRef.current);
+        zoomBadgeTimeoutRef.current = setTimeout(() => setShowZoomBadge(false), 1200);
+      }
+    };
+
+    container.addEventListener("touchstart", onTouchStart, { passive: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: false });
+    container.addEventListener("touchend", onTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    container.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("touchstart", onTouchStart);
+      container.removeEventListener("touchmove", onTouchMove);
+      container.removeEventListener("touchend", onTouchEnd);
+      container.removeEventListener("touchcancel", onTouchEnd);
+      container.removeEventListener("wheel", onWheel);
+    };
+  }, [viewMode, members]);
 
   const matchingMembers = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -778,30 +929,6 @@ export default function FamilyTreeView({
                 <Scan className="w-3.5 h-3.5" />
                 <span>{lang === "bn" ? "ফিট স্ক্রিন" : "Fit"}</span>
               </button>
-
-              <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl">
-                <button
-                  onClick={() => setZoom((z) => Math.max(0.35, +(z - 0.1).toFixed(2)))}
-                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))}
-                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setZoom(1)}
-                  className="p-1.5 rounded-lg hover:bg-stone-200 text-stone-700 cursor-pointer"
-                  title="Reset 100%"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
             </div>
           )}
         </div>
@@ -813,19 +940,42 @@ export default function FamilyTreeView({
           {rootMembers.map((root) => renderMobileNode(root))}
         </div>
       ) : (
-        <div
-          ref={containerRef}
-          className="bg-white/70 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-3 sm:p-8 min-h-[500px] touch-pan-x touch-pan-y overscroll-x-contain"
-        >
+        <div className="relative">
           <div
-            ref={contentRef}
-            className="inline-flex min-w-full justify-start sm:justify-center transition-transform duration-200 origin-top-left sm:origin-top"
-            style={{ transform: `scale(${zoom})` }}
+            ref={containerRef}
+            className="bg-white/70 rounded-2xl border border-stone-200 overflow-x-auto overflow-y-auto p-3 sm:p-8 min-h-[500px] touch-pan-x touch-pan-y overscroll-x-contain"
           >
-            <div className="flex items-start gap-4 sm:gap-6 pb-12 pt-2">
-              {rootMembers.map((root) => renderCanvasNode(root))}
+            <div
+              style={{
+                width: contentSize.width ? `${contentSize.width * zoom}px` : "auto",
+                height: contentSize.height ? `${contentSize.height * zoom}px` : "auto",
+                minWidth: "100%",
+              }}
+            >
+              <div
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "0 0",
+                  transition: isPinching ? "none" : "transform 0.2s ease-out",
+                  width: "max-content",
+                }}
+              >
+                <div
+                  ref={contentRef}
+                  className="flex items-start gap-4 sm:gap-6 pb-12 pt-2"
+                >
+                  {rootMembers.map((root) => renderCanvasNode(root))}
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Floating Zoom Level Pill (Visible while pinching or zooming) */}
+          {showZoomBadge && (
+            <div className="absolute bottom-4 right-4 z-20 pointer-events-none bg-stone-900/85 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-full text-xs font-black shadow-xl border border-white/20 transition-opacity">
+              {Math.round(zoom * 100)}%
+            </div>
+          )}
         </div>
       )}
     </div>
