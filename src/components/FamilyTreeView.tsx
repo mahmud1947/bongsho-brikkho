@@ -6,18 +6,16 @@ import {
   ChevronRight,
   UserPlus,
   MapPin,
-  Briefcase,
   Search,
   LayoutList,
   Network,
   Globe,
   Phone,
   Scan,
-  Sparkles,
   MessageSquare,
   Share2,
 } from "lucide-react";
-import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
+import { FamilyBranch, FamilyMember, Language, formatSocialUrl, getCountryFlag } from "@/types/family";
 
 interface FamilyTreeViewProps {
   members: FamilyMember[];
@@ -39,7 +37,6 @@ export default function FamilyTreeView({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
-  const [isCompact, setIsCompact] = useState<boolean>(false);
 
   const formatWhatsappUrl = (phoneOrWa?: string) => {
     if (!phoneOrWa) return "";
@@ -86,7 +83,6 @@ export default function FamilyTreeView({
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
       setZoom(0.65);
-      setIsCompact(true);
     }
   }, []);
 
@@ -486,95 +482,122 @@ export default function FamilyTreeView({
     );
   };
 
-  // Canvas / Tree Node Card
+  // Canvas / Tree Node Card (Single unified compact card optimized for both mobile & desktop)
   const renderCanvasNode = (member: FamilyMember): React.ReactNode => {
     const visibleChildren = childrenMap[member.id] || [];
     const hasChildren = visibleChildren.length > 0;
     const isCollapsed = !!collapsedIds[member.id];
     const style = getBranchStyle(member.branchId);
 
-    // COMPACT CARD (Specifically optimized for Mobile so multiple branches fit without scrolling)
-    if (isCompact) {
-      return (
-        <div key={member.id} className="flex flex-col items-center relative px-1">
-          <div
-            id={`tree-node-${member.id}`}
-            onClick={() => onSelectMember(member)}
-            className={`w-36 sm:w-44 rounded-xl bg-white border-2 ${style.border} shadow-sm hover:shadow-lg transition cursor-pointer relative ${
-              highlightedId === member.id ? "ring-2 ring-amber-400" : ""
-            }`}
-          >
-            {/* Header: Gen | Late Status only if deceased */}
-            <div className={`px-2 py-1 rounded-t-[10px] flex items-center justify-between text-[10px] font-bold ${style.header}`}>
+    const displayName = lang === "bn" ? member.nameBn || member.nameEn : member.nameEn || member.nameBn;
+    const rawNickname =
+      (lang === "bn" ? member.nicknameBn || member.nicknameEn : member.nicknameEn || member.nicknameBn) || "";
+    const displayNickname =
+      rawNickname && rawNickname !== "None" && rawNickname !== "নেই" ? rawNickname : "";
+    const displayLocation =
+      lang === "bn" ? member.locationBn || member.locationEn : member.locationEn || member.locationBn;
+    const countryFlag = getCountryFlag(member.countryBn || member.countryEn);
+    const genderLetter = member.gender === "female" ? "F" : "M";
+
+    return (
+      <div key={member.id} className="flex flex-col items-center relative px-1">
+        <div
+          id={`tree-node-${member.id}`}
+          onClick={() => onSelectMember(member)}
+          className={`w-44 sm:w-48 rounded-xl bg-white border-2 ${style.border} shadow-sm hover:shadow-lg transition cursor-pointer relative ${
+            highlightedId === member.id ? "ring-2 ring-amber-400" : ""
+          }`}
+        >
+          {/* Header: G{generation} • M/F (Left) | Late (if deceased) + Flag (Right) */}
+          <div className={`px-2 py-1 rounded-t-[10px] flex items-center justify-between text-[10px] font-bold ${style.header}`}>
+            <div className="flex items-center gap-1">
               <span>G{member.generation}</span>
+              <span>•</span>
+              <span>{genderLetter}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
               {!member.isAlive && (
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-black/25 text-stone-100">
-                  {lang === "bn" ? "প্রয়াত" : "Late"}
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-black/30 text-stone-100 font-semibold leading-none">
+                  Late
                 </span>
+              )}
+              <span className="text-xs leading-none" title={member.countryBn || member.countryEn || "Bangladesh"}>
+                {countryFlag}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-2 space-y-1">
+            {/* Name & Nickname */}
+            <div>
+              <h3 className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate">
+                {displayName}
+              </h3>
+              {displayNickname && (
+                <p className="text-[10px] text-emerald-800 font-medium truncate -mt-0.5">
+                  ({displayNickname})
+                </p>
               )}
             </div>
 
-            <div className="p-2 space-y-1">
-              <h3 className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate">
-                {lang === "bn" ? member.nameBn : member.nameEn}
-              </h3>
+            {/* Address (Country text omitted since flag is in header) */}
+            {displayLocation && (
+              <p className="truncate flex items-center gap-1 text-[10px] text-stone-600">
+                <MapPin className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
+                <span className="truncate">{displayLocation}</span>
+              </p>
+            )}
 
-              <div className="text-[10px] text-stone-600 space-y-0.5 pt-0.5 border-t border-stone-100">
-                <p className="truncate flex items-center gap-1">
-                  <MapPin className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
-                  <span className="truncate">{member.locationBn}</span>
-                </p>
-                {member.phone && (
-                  <div className="flex items-center justify-between gap-1 pt-0.5">
-                    <a
-                      href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="truncate flex items-center gap-1 text-emerald-800 font-bold hover:underline"
-                    >
-                      <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
-                      <span className="truncate">{member.phone}</span>
-                    </a>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {formatWhatsappUrl(member.whatsapp || member.phone) && (
-                        <a
-                          href={formatWhatsappUrl(member.whatsapp || member.phone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-green-600 hover:text-green-700"
-                          title="WhatsApp"
-                        >
-                          <MessageSquare className="w-2.5 h-2.5" />
-                        </a>
-                      )}
-                      {member.socialLink && (
-                        <a
-                          href={formatSocialUrl(member.socialLink)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-blue-600 hover:text-blue-700"
-                          title="Social Link"
-                        >
-                          <Share2 className="w-2.5 h-2.5" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-1 flex items-center justify-between">
-                <span className="text-[9px] text-blue-600 font-medium truncate">
-                  {lang === "bn" ? member.countryBn || "বাংলাদেশ" : member.countryEn || "BD"}
+            {/* Phone & Contact Icons & Add Child */}
+            <div className="flex items-center justify-between gap-1 pt-1 border-t border-stone-100 text-[10px]">
+              {member.phone ? (
+                <a
+                  href={`tel:${member.phone.replace(/\s+/g, "")}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="truncate flex items-center gap-1 text-emerald-800 font-bold hover:underline"
+                  title={member.phone}
+                >
+                  <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
+                  <span className="truncate">{member.phone}</span>
+                </a>
+              ) : (
+                <span className="text-stone-300 text-[9px] italic truncate">
+                  {lang === "bn" ? "ফোন নেই" : "No phone"}
                 </span>
+              )}
+
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {formatWhatsappUrl(member.whatsapp || member.phone) && (
+                  <a
+                    href={formatWhatsappUrl(member.whatsapp || member.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-green-600 hover:text-green-700 p-0.5"
+                    title="WhatsApp"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                  </a>
+                )}
+                {member.socialLink && (
+                  <a
+                    href={formatSocialUrl(member.socialLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-blue-600 hover:text-blue-700 p-0.5"
+                    title="Social Link"
+                  >
+                    <Share2 className="w-3 h-3" />
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onAddChildToMember(member);
                   }}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[9px] font-bold"
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[9px] font-bold cursor-pointer ml-0.5"
                   title={lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
                 >
                   <UserPlus className="w-2.5 h-2.5" />
@@ -582,6 +605,7 @@ export default function FamilyTreeView({
                 </button>
               </div>
             </div>
+          </div>
 
             {hasChildren && (
               <button
@@ -624,183 +648,6 @@ export default function FamilyTreeView({
           )}
         </div>
       );
-    }
-
-    // FULL DETAILED CARD
-    return (
-      <div key={member.id} className="flex flex-col items-center relative px-2">
-        <div
-          id={`tree-node-${member.id}`}
-          onClick={() => onSelectMember(member)}
-          className={`w-60 sm:w-64 rounded-2xl bg-white border-2 ${style.border} shadow-md hover:shadow-xl transition cursor-pointer relative ${
-            highlightedId === member.id ? "ring-4 ring-amber-400" : ""
-          }`}
-        >
-          {/* Header: Gen (Left) | Late Status only if deceased (Right) */}
-          <div className={`px-3 py-1.5 rounded-t-[14px] flex items-center justify-between text-[11px] font-bold ${style.header}`}>
-            <span>G{member.generation}</span>
-            {!member.isAlive && (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/25 text-stone-100">
-                {lang === "bn" ? "প্রয়াত" : "Late"}
-              </span>
-            )}
-          </div>
-
-          <div className="p-3 space-y-2">
-            {/* Name */}
-            <div>
-              <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug truncate">
-                {lang === "bn" ? member.nameBn : member.nameEn}
-              </h3>
-              <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                {(member.nicknameBn || member.nicknameEn) && (
-                  <span className="text-amber-700 font-semibold truncate">
-                    ({lang === "bn" ? member.nicknameBn : member.nicknameEn})
-                  </span>
-                )}
-                {member.bloodGroup && member.bloodGroup !== "Unknown" && (
-                  <span className="text-rose-700 font-bold ml-auto">
-                    🩸 {member.bloodGroup}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Country, Present Address, Phone */}
-            <div className="pt-2 border-t border-stone-100 space-y-1.5 text-xs text-stone-600">
-              {/* Country */}
-              <div className="flex items-center gap-1.5 truncate">
-                <Globe className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                <span className="font-semibold text-stone-700 truncate">
-                  {lang === "bn"
-                    ? member.countryBn || "বাংলাদেশ"
-                    : member.countryEn || "Bangladesh"}
-                </span>
-              </div>
-
-              {/* Present Address */}
-              <div className="flex items-center gap-1.5 truncate">
-                <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                <span className="truncate">
-                  {lang === "bn" ? member.locationBn : member.locationEn}
-                </span>
-              </div>
-
-              {/* Phone & WhatsApp & Social */}
-              {(member.phone || member.whatsapp || member.socialLink) && (
-                <div className="flex items-center justify-between gap-1 flex-wrap pt-0.5">
-                  {member.phone ? (
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                      <a
-                        href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-emerald-800 font-bold hover:underline truncate"
-                      >
-                        {member.phone}
-                      </a>
-                    </div>
-                  ) : <div />}
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {formatWhatsappUrl(member.whatsapp || member.phone) && (
-                      <a
-                        href={formatWhatsappUrl(member.whatsapp || member.phone)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-[11px] border border-green-200"
-                        title="WhatsApp Chat"
-                      >
-                        <MessageSquare className="w-3 h-3 text-green-600" />
-                        <span>WA</span>
-                      </a>
-                    )}
-                    {member.socialLink && (
-                      <a
-                        href={formatSocialUrl(member.socialLink)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200"
-                        title="Social Link"
-                      >
-                        <Share2 className="w-3 h-3 text-blue-600" />
-                        <span>Social</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Profession (if available) */}
-              {member.professionBn && member.professionBn !== "-" && member.professionBn !== "জানা নেই" && (
-                <div className="flex items-center gap-1.5 truncate text-[11px] text-stone-500">
-                  <Briefcase className="w-3 h-3 text-stone-400 flex-shrink-0" />
-                  <span className="truncate">
-                    {lang === "bn" ? member.professionBn : member.professionEn}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Action button */}
-            <div className="pt-1.5 flex justify-end">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddChildToMember(member);
-                }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold shadow-sm"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>{lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}</span>
-              </button>
-            </div>
-          </div>
-
-          {hasChildren && (
-            <button
-              type="button"
-              onClick={(e) => toggleCollapse(member.id, e)}
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-0.5 px-2.5 py-0.5 rounded-full bg-emerald-900 text-amber-300 text-[11px] font-bold shadow cursor-pointer hover:bg-emerald-800"
-            >
-              <span>{visibleChildren.length}</span>
-              {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-          )}
-        </div>
-
-        {hasChildren && !isCollapsed && (
-          <div className="flex flex-col items-center">
-            <div className="w-0.5 h-7 bg-emerald-700/60" />
-            <div className="flex items-start justify-center relative">
-              {visibleChildren.map((child, idx) => {
-                const isOnly = visibleChildren.length === 1;
-                return (
-                  <div key={child.id} className="flex flex-col items-center relative">
-                    {!isOnly && (
-                      <div
-                        className={`h-0.5 bg-emerald-700/60 absolute top-0 ${
-                          idx === 0
-                            ? "left-1/2 right-0"
-                            : idx === visibleChildren.length - 1
-                            ? "left-0 right-1/2"
-                            : "left-0 right-0"
-                        }`}
-                      />
-                    )}
-                    <div className="w-0.5 h-6 bg-emerald-700/60" />
-                    {renderCanvasNode(child)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   if (members.length === 0) {
@@ -844,29 +691,6 @@ export default function FamilyTreeView({
               <span>{lang === "bn" ? "লিস্ট" : "List"}</span>
             </button>
           </div>
-
-          {/* Density Switcher for Chart (Details vs Compact Mini-Cards) */}
-          {viewMode === "canvas" && (
-            <div className="flex bg-amber-50 border border-amber-200 p-1 rounded-xl">
-              <button
-                onClick={() => setIsCompact(false)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
-                  !isCompact ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-amber-900"
-                }`}
-              >
-                {lang === "bn" ? "ডিটেইলস" : "Full"}
-              </button>
-              <button
-                onClick={() => setIsCompact(true)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
-                  isCompact ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-amber-900"
-                }`}
-              >
-                <Sparkles className="w-3 h-3 inline mr-1" />
-                {lang === "bn" ? "কমপ্যাক্ট" : "Mini"}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Right: Search, Fit Screen, & Zoom Controls */}

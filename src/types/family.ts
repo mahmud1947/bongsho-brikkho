@@ -148,3 +148,49 @@ export function formatSocialUrl(raw?: string): string {
   // 6. Otherwise treated as an Instagram username/ID (e.g., "mahmud2026", "shofik_uddin", "user.name")
   return `https://instagram.com/${trimmed}`;
 }
+
+export function getCountryFlag(country?: string): string {
+  if (!country) return "🇧🇩";
+  const c = country.trim().toLowerCase();
+  if (c.includes("বাংলাদেশ") || c.includes("bangladesh") || c === "bd") return "🇧🇩";
+  if (
+    c.includes("যুক্তরাজ্য") ||
+    c.includes("united kingdom") ||
+    c.includes("uk") ||
+    c.includes("ইউকে") ||
+    c.includes("britain") ||
+    c.includes("england")
+  )
+    return "🇬🇧";
+  if (
+    c.includes("যুক্তরাষ্ট্র") ||
+    c.includes("united states") ||
+    c.includes("usa") ||
+    c.includes("ইউএসএ") ||
+    c.includes("america")
+  )
+    return "🇺🇸";
+  if (c.includes("সৌদি") || c.includes("saudi") || c.includes("ksa")) return "🇸🇦";
+  if (
+    c.includes("আরব আমিরাত") ||
+    c.includes("uae") ||
+    c.includes("ইউএই") ||
+    c.includes("dubai") ||
+    c.includes("emirates")
+  )
+    return "🇦🇪";
+  if (c.includes("কাতার") || c.includes("qatar")) return "🇶🇦";
+  if (c.includes("কুয়েত") || c.includes("kuwait")) return "🇰🇼";
+  if (c.includes("ওমান") || c.includes("oman")) return "🇴🇲";
+  if (c.includes("বাহরাইন") || c.includes("bahrain")) return "🇧🇭";
+  if (c.includes("মালয়েশিয়া") || c.includes("malaysia")) return "🇲🇾";
+  if (c.includes("সিঙ্গাপুর") || c.includes("singapore")) return "🇸🇬";
+  if (c.includes("কানাডা") || c.includes("canada")) return "🇨🇦";
+  if (c.includes("অস্ট্রেলিয়া") || c.includes("australia")) return "🇦🇺";
+  if (c.includes("ইতালি") || c.includes("italy")) return "🇮🇹";
+  if (c.includes("জার্মানি") || c.includes("germany")) return "🇩🇪";
+  if (c.includes("ফ্রান্স") || c.includes("france")) return "🇫🇷";
+  if (c.includes("ভারত") || c.includes("india")) return "🇮🇳";
+  if (c.includes("পাকিস্তান") || c.includes("pakistan")) return "🇵🇰";
+  return "🇧🇩";
+}
