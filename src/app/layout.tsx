@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Hind_Siliguri, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { FamilyProvider } from "@/context/FamilyContext";
 import AppShell from "@/components/AppShell";
@@ -7,18 +6,6 @@ import PwaRegistration from "@/components/PwaRegistration";
 
 const isProd = process.env.NODE_ENV === "production";
 const basePath = isProd ? "/bongsho-brikkho" : "";
-
-const hindSiliguri = Hind_Siliguri({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-hind-siliguri",
-});
-
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-jakarta",
-});
 
 export const viewport: Viewport = {
   themeColor: "#064e3b",
@@ -54,10 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${hindSiliguri.variable} ${plusJakarta.variable}`}
-    >
+    <html lang="en">
       <body className="min-h-screen antialiased selection:bg-amber-300 selection:text-emerald-950">
         <FamilyProvider>
           <AppShell>{children}</AppShell>
