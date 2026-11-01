@@ -35,6 +35,7 @@ import { compressImageFile } from "@/lib/imageUtils";
 import {
   getNotificationPermission,
   requestChatNotificationPermission,
+  vibrateDevice,
 } from "@/lib/notificationUtils";
 
 interface FamilyChatProps {
@@ -162,8 +163,114 @@ export default function FamilyChat({
   const [replyingTo, setReplyingTo] = useState<FamilyChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<FamilyChatMessage | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [activeMenuMessage, setActiveMenuMessage] = useState<FamilyChatMessage | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  // Swipe to reply and Touch-and-Hold (long press) states
+  const [swipingMsgId, setSwipingMsgId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<number>(0);
+  const touchStartRef = useRef<{ x: number; y: number; time: number; msgId: string } | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasVibratedSwipeRef = useRef<boolean>(false);
+  const isHorizontalSwipeRef = useRef<boolean | null>(null);
+
+  const handleTouchStart = (msg: FamilyChatMessage, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now(),
+      msgId: msg.id,
+    };
+    hasVibratedSwipeRef.current = false;
+    isHorizontalSwipeRef.current = null;
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    // Long press for 420ms opens reaction emojis & action sheet
+    longPressTimerRef.current = setTimeout(() => {
+      vibrateDevice([40]);
+      setActiveMenuMessage(msg);
+      setSwipingMsgId(null);
+      setSwipeOffset(0);
+      touchStartRef.current = null;
+    }, 420);
+  };
+
+  const handleTouchMove = (msg: FamilyChatMessage, e: React.TouchEvent) => {
+    if (!touchStartRef.current || touchStartRef.current.msgId !== msg.id) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    // Movement cancels long-press
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+
+    // Lock direction
+    if (isHorizontalSwipeRef.current === null) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+        isHorizontalSwipeRef.current = false;
+      } else if (Math.abs(deltaX) > 8) {
+        isHorizontalSwipeRef.current = true;
+      }
+    }
+
+    if (isHorizontalSwipeRef.current === false) {
+      if (swipingMsgId === msg.id) {
+        setSwipingMsgId(null);
+        setSwipeOffset(0);
+      }
+      return;
+    }
+
+    if (isHorizontalSwipeRef.current === true && deltaX > 0) {
+      // Swiping right to reply
+      const damped = Math.min(Math.pow(deltaX, 0.82) * 1.8, 65);
+      setSwipingMsgId(msg.id);
+      setSwipeOffset(damped);
+
+      if (damped >= 40 && !hasVibratedSwipeRef.current) {
+        vibrateDevice([25]);
+        hasVibratedSwipeRef.current = true;
+      }
+    }
+  };
+
+  const handleTouchEnd = (msg: FamilyChatMessage) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (swipingMsgId === msg.id) {
+      if (swipeOffset >= 38) {
+        handleStartReply(msg);
+      }
+      setSwipingMsgId(null);
+      setSwipeOffset(0);
+    }
+    touchStartRef.current = null;
+    isHorizontalSwipeRef.current = null;
+  };
+
+  const handleTouchCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setSwipingMsgId(null);
+    setSwipeOffset(0);
+    touchStartRef.current = null;
+    isHorizontalSwipeRef.current = null;
+  };
 
   // Search & Filter
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -416,6 +523,7 @@ export default function FamilyChat({
       reactions: currentReactions,
     };
     setActiveMenuId(null);
+    setActiveMenuMessage(null);
     await (onUpdate ? onUpdate(updated) : onSend(updated));
   };
 
@@ -425,6 +533,7 @@ export default function FamilyChat({
       isPinned: !msg.isPinned,
     };
     setActiveMenuId(null);
+    setActiveMenuMessage(null);
     await (onUpdate ? onUpdate(updated) : onSend(updated));
   };
 
@@ -433,6 +542,7 @@ export default function FamilyChat({
     setEditingMessage(msg);
     setText(msg.text);
     setActiveMenuId(null);
+    setActiveMenuMessage(null);
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
@@ -440,6 +550,7 @@ export default function FamilyChat({
     setEditingMessage(null);
     setReplyingTo(msg);
     setActiveMenuId(null);
+    setActiveMenuMessage(null);
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
@@ -448,6 +559,7 @@ export default function FamilyChat({
       await navigator.clipboard.writeText(msg.text);
       setCopiedId(msg.id);
       setActiveMenuId(null);
+      setActiveMenuMessage(null);
       setTimeout(() => {
         setCopiedId((prev) => (prev === msg.id ? null : prev));
       }, 1800);
@@ -456,6 +568,7 @@ export default function FamilyChat({
 
   const handleDeleteMessage = async (msg: FamilyChatMessage) => {
     setActiveMenuId(null);
+    setActiveMenuMessage(null);
     const isMine = msg.authorUsername === currentUsername;
     if (isMine && onDeleteOwn) {
       const confirmMsg =
@@ -931,9 +1044,48 @@ export default function FamilyChat({
                         isMine ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
+                      {/* Swipe-to-reply indicator on the left of bubble */}
+                      {swipingMsgId === message.id && (
+                        <div
+                          className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none transition-all duration-150 z-10"
+                          style={{
+                            opacity: Math.min(swipeOffset / 28, 1),
+                            transform: `scale(${Math.min(0.6 + (swipeOffset / 40) * 0.4, 1.15)}) translateY(-50%)`,
+                          }}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center shadow-xs transition-colors ${
+                              swipeOffset >= 38
+                                ? "bg-emerald-600 text-white ring-2 ring-emerald-300"
+                                : "bg-stone-300 text-stone-700"
+                            }`}
+                          >
+                            <CornerUpLeft className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      )}
+
                       {/* MESSAGE BUBBLE */}
                       <div
-                        className={`relative px-3.5 py-2.5 shadow-xs transition ${
+                        onTouchStart={(e) => handleTouchStart(message, e)}
+                        onTouchMove={(e) => handleTouchMove(message, e)}
+                        onTouchEnd={() => handleTouchEnd(message)}
+                        onTouchCancel={handleTouchCancel}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setActiveMenuMessage(message);
+                        }}
+                        style={{
+                          transform:
+                            swipingMsgId === message.id
+                              ? `translateX(${swipeOffset}px)`
+                              : undefined,
+                          transition:
+                            swipingMsgId === message.id
+                              ? "none"
+                              : "transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1)",
+                        }}
+                        className={`relative px-3.5 py-2.5 shadow-xs select-none touch-pan-y transition-colors ${
                           isMine
                             ? `bg-gradient-to-br from-emerald-900 to-emerald-950 text-white ${
                                 isGroupedWithNext
@@ -1027,148 +1179,19 @@ export default function FamilyChat({
                         </div>
                       </div>
 
-                      {/* QUICK ACTION BUTTONS (Hover on desktop / tap menu on mobile) */}
-                      <div className="relative flex items-center gap-0.5 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                        {currentUsername && (
-                          <button
-                            type="button"
-                            onClick={() => handleStartReply(message)}
-                            className="p-1.5 rounded-full bg-white/90 hover:bg-white border border-stone-200 text-stone-600 hover:text-emerald-800 shadow-2xs cursor-pointer"
-                            title={lang === "bn" ? "রিপ্লাই দিন" : "Reply"}
-                          >
-                            <CornerUpLeft className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
+                      {/* Desktop hover options trigger (hidden on mobile) */}
+                      <div className="hidden sm:inline-flex opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveMenuId((prev) =>
-                              prev === message.id ? null : message.id
-                            );
+                            setActiveMenuMessage(message);
                           }}
                           className="p-1.5 rounded-full bg-white/90 hover:bg-white border border-stone-200 text-stone-600 hover:text-emerald-800 shadow-2xs cursor-pointer"
-                          title={lang === "bn" ? "আরও অপশন" : "More actions"}
+                          title={lang === "bn" ? "মেনু ও ইমোজি" : "Reactions & Options"}
                         >
                           <MoreHorizontal className="w-3.5 h-3.5" />
                         </button>
-
-                        {/* POPOVER MENU (Reactions + Actions) */}
-                        {activeMenuId === message.id && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            className={`absolute bottom-full mb-1.5 z-30 bg-white rounded-2xl shadow-xl border border-stone-200 p-2 min-w-[195px] animate-in fade-in zoom-in-95 duration-150 ${
-                              isMine ? "right-0" : "left-0"
-                            }`}
-                          >
-                            {/* Reaction Strip */}
-                            {currentUsername && (
-                              <div className="flex items-center justify-between gap-1 pb-2 mb-1.5 border-b border-stone-100">
-                                {REACTION_EMOJIS.map((emoji) => {
-                                  const hasReacted =
-                                    message.reactions?.[emoji]?.includes(
-                                      currentUsername
-                                    );
-                                  return (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      onClick={() =>
-                                        handleToggleReaction(message, emoji)
-                                      }
-                                      className={`w-7 h-7 rounded-xl flex items-center justify-center text-base hover:scale-125 transition cursor-pointer ${
-                                        hasReacted
-                                          ? "bg-emerald-100 ring-1 ring-emerald-500"
-                                          : "hover:bg-stone-100"
-                                      }`}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {/* Action List */}
-                            <div className="space-y-0.5 text-xs font-semibold text-stone-700">
-                              {currentUsername && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartReply(message)}
-                                  className="w-full px-2.5 py-1.5 rounded-xl hover:bg-stone-100 flex items-center gap-2 text-left cursor-pointer"
-                                >
-                                  <CornerUpLeft className="w-3.5 h-3.5 text-emerald-700" />
-                                  <span>
-                                    {lang === "bn" ? "রিপ্লাই দিন" : "Reply"}
-                                  </span>
-                                </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopyText(message)}
-                                className="w-full px-2.5 py-1.5 rounded-xl hover:bg-stone-100 flex items-center gap-2 text-left cursor-pointer"
-                              >
-                                <Copy className="w-3.5 h-3.5 text-stone-500" />
-                                <span>
-                                  {lang === "bn"
-                                    ? "টেক্সট কপি করুন"
-                                    : "Copy Text"}
-                                </span>
-                              </button>
-
-                              {currentUsername && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePin(message)}
-                                  className="w-full px-2.5 py-1.5 rounded-xl hover:bg-stone-100 flex items-center gap-2 text-left cursor-pointer"
-                                >
-                                  <Pin className="w-3.5 h-3.5 text-amber-600" />
-                                  <span>
-                                    {message.isPinned
-                                      ? lang === "bn"
-                                        ? "আনপিন করুন"
-                                        : "Unpin Message"
-                                      : lang === "bn"
-                                      ? "পিন করুন"
-                                      : "Pin Message"}
-                                  </span>
-                                </button>
-                              )}
-
-                              {isMine && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEdit(message)}
-                                  className="w-full px-2.5 py-1.5 rounded-xl hover:bg-stone-100 flex items-center gap-2 text-left cursor-pointer"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5 text-blue-600" />
-                                  <span>
-                                    {lang === "bn"
-                                      ? "বার্তা এডিট করুন"
-                                      : "Edit Message"}
-                                  </span>
-                                </button>
-                              )}
-
-                              {(isMine || isAdmin) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteMessage(message)}
-                                  className="w-full px-2.5 py-1.5 rounded-xl hover:bg-rose-50 text-rose-600 flex items-center gap-2 text-left cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>
-                                    {lang === "bn"
-                                      ? "মুছে ফেলুন"
-                                      : "Delete Message"}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -1464,6 +1487,160 @@ export default function FamilyChat({
             onClick={(e) => e.stopPropagation()}
             className="max-w-full max-h-[88vh] rounded-2xl shadow-2xl object-contain"
           />
+        </div>
+      )}
+
+      {/* REACTION & ACTION SHEET MODAL (Triggered by Touch & Hold or Desktop Menu) */}
+      {activeMenuMessage && (
+        <div
+          onClick={() => setActiveMenuMessage(null)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex flex-col justify-end sm:justify-center items-center p-3 animate-in fade-in duration-150"
+        >
+          {/* Reaction Emojis Floating Pill */}
+          {currentUsername && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-stone-200/90 px-3.5 py-2 flex items-center gap-2 sm:gap-3 mb-3 animate-in zoom-in-95 duration-150"
+            >
+              {REACTION_EMOJIS.map((emoji) => {
+                const hasReacted =
+                  currentUsername &&
+                  activeMenuMessage.reactions?.[emoji]?.includes(currentUsername);
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => {
+                      vibrateDevice([20]);
+                      handleToggleReaction(activeMenuMessage, emoji);
+                      setActiveMenuMessage(null);
+                    }}
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-2xl hover:scale-125 active:scale-95 transition cursor-pointer ${
+                      hasReacted
+                        ? "bg-amber-100 ring-2 ring-amber-400 scale-110"
+                        : "hover:bg-stone-100"
+                    }`}
+                    title={emoji}
+                  >
+                    {emoji}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action List Card */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-stone-200 overflow-hidden divide-y divide-stone-100 text-sm animate-in slide-in-from-bottom-3 sm:zoom-in-95 duration-150"
+          >
+            {/* Target Message preview */}
+            <div className="px-4 py-2.5 bg-stone-50 text-stone-500 text-xs flex items-center justify-between">
+              <span className="font-bold text-stone-700 truncate max-w-[200px]">
+                {getDisplayAuthorName(activeMenuMessage)}
+              </span>
+              <span className="text-[11px] text-stone-400">
+                {formatMessageTime(activeMenuMessage.createdAt, lang)}
+              </span>
+            </div>
+
+            {/* 1. Reply */}
+            {currentUsername && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleStartReply(activeMenuMessage);
+                  setActiveMenuMessage(null);
+                }}
+                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center justify-between text-stone-800 font-semibold transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <CornerUpLeft className="w-4 h-4 text-emerald-700" />
+                  <span>{lang === "bn" ? "রিপ্লাই দিন" : "Reply"}</span>
+                </div>
+                <span className="text-[11px] text-stone-400 font-normal">
+                  {lang === "bn" ? "ডানে সোয়াইপ" : "Swipe right"}
+                </span>
+              </button>
+            )}
+
+            {/* 2. Copy Text */}
+            {activeMenuMessage.text && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleCopyText(activeMenuMessage);
+                  setActiveMenuMessage(null);
+                }}
+                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
+              >
+                <Copy className="w-4 h-4 text-stone-600" />
+                <span>{lang === "bn" ? "টেক্সট কপি করুন" : "Copy Text"}</span>
+              </button>
+            )}
+
+            {/* 3. Pin / Unpin */}
+            {currentUsername && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleTogglePin(activeMenuMessage);
+                  setActiveMenuMessage(null);
+                }}
+                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
+              >
+                <Pin className="w-4 h-4 text-amber-600" />
+                <span>
+                  {activeMenuMessage.isPinned
+                    ? lang === "bn"
+                      ? "আনপিন করুন"
+                      : "Unpin Message"
+                    : lang === "bn"
+                    ? "পিন করুন"
+                    : "Pin Message"}
+                </span>
+              </button>
+            )}
+
+            {/* 4. Edit (if own) */}
+            {activeMenuMessage.authorUsername === currentUsername && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleStartEdit(activeMenuMessage);
+                  setActiveMenuMessage(null);
+                }}
+                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-blue-700 font-semibold transition cursor-pointer"
+              >
+                <Edit2 className="w-4 h-4 text-blue-600" />
+                <span>{lang === "bn" ? "বার্তা এডিট করুন" : "Edit Message"}</span>
+              </button>
+            )}
+
+            {/* 5. Delete (if own or admin) */}
+            {(activeMenuMessage.authorUsername === currentUsername || isAdmin) && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteMessage(activeMenuMessage);
+                  setActiveMenuMessage(null);
+                }}
+                className="w-full px-4 py-3 hover:bg-rose-50 flex items-center gap-2.5 text-rose-700 font-semibold transition cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>{lang === "bn" ? "বার্তা মুছুন" : "Delete Message"}</span>
+              </button>
+            )}
+
+            {/* 6. Cancel */}
+            <button
+              type="button"
+              onClick={() => setActiveMenuMessage(null)}
+              className="w-full px-4 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-500 text-xs font-bold transition cursor-pointer"
+            >
+              {lang === "bn" ? "বাতিল" : "Cancel"}
+            </button>
+          </div>
         </div>
       )}
     </section>
