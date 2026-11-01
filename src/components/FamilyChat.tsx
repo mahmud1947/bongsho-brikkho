@@ -476,9 +476,9 @@ export default function FamilyChat({
         currentUsername;
 
   return (
-    <section className="max-w-3xl mx-auto h-[calc(100vh-8.5rem)] min-h-[540px] flex flex-col bg-white rounded-3xl border border-stone-200/90 shadow-md overflow-hidden relative">
+    <section className="w-full h-full flex-1 flex flex-col min-h-0 bg-white border-0 rounded-none shadow-none overflow-hidden relative">
       {/* HEADER */}
-      <header className="px-4 sm:px-5 py-3 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-2 border-b border-emerald-800/80 z-20">
+      <header className="px-3.5 sm:px-6 py-2.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-2 border-b border-emerald-800/80 z-20 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative flex-shrink-0">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center shadow-sm">
@@ -1144,7 +1144,7 @@ export default function FamilyChat({
 
       {/* FOOTER: INPUT OR IN-PLACE QUICK LOGIN */}
       {currentUsername ? (
-        <div className="border-t border-stone-200 bg-white z-20">
+        <div className="border-t border-stone-200 bg-white z-20 flex-shrink-0">
           {/* REPLYING OR EDITING BANNER */}
           {(replyingTo || editingMessage) && (
             <div className="px-3.5 py-2 bg-stone-100 border-b border-stone-200 flex items-center justify-between gap-2 text-xs">
@@ -1260,9 +1260,7 @@ export default function FamilyChat({
                     ? lang === "bn"
                       ? "ছবি প্রস্তুত করা হচ্ছে..."
                       : "Preparing photo..."
-                    : lang === "bn"
-                    ? "একটি বার্তা লিখুন... (পাঠাতে Enter চাপুন)"
-                    : "Write a message... (Press Enter to send)"
+                    : "Write message..."
                 }
                 className="w-full px-3.5 py-2.5 rounded-2xl border border-stone-200/90 bg-stone-50 focus:bg-white text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none max-h-32 leading-snug"
               />
@@ -1280,7 +1278,7 @@ export default function FamilyChat({
         </div>
       ) : (
         /* IN-PLACE QUICK LOGIN / NAME SETUP */
-        <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-gradient-to-b from-stone-50 to-white z-20">
+        <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-gradient-to-b from-stone-50 to-white z-20 flex-shrink-0">
           {onQuickLogin ? (
             <form onSubmit={handleQuickLoginSubmit} className="space-y-2.5">
               <div className="flex items-center justify-between">

@@ -54,8 +54,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/bongsho-brikkho" ||
     pathname === "/bongsho-brikkho/";
 
+  const isChatPage =
+    pathname === "/chat" ||
+    pathname === "/chat/" ||
+    pathname === "/bongsho-brikkho/chat" ||
+    pathname === "/bongsho-brikkho/chat/";
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f7f4] pb-20 md:pb-0">
+    <div
+      className={`flex flex-col bg-[#f8f7f4] ${
+        isChatPage ? "h-[100dvh] overflow-hidden pb-14 md:pb-0" : "min-h-screen pb-20 md:pb-0"
+      }`}
+    >
       <Navbar />
 
       {/* Single-Word Stats Strip: Only shown on main Family Tree page. */}
@@ -97,8 +107,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </section>
       )}
 
-      {/* Page Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Page Content: Full-bleed edge-to-edge for Chat, standard container for other pages */}
+      <main
+        className={
+          isChatPage
+            ? "flex-1 w-full flex flex-col min-h-0 overflow-hidden p-0 m-0 max-w-none"
+            : "flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6"
+        }
+      >
         {children}
       </main>
 
