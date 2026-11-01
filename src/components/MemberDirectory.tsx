@@ -22,7 +22,6 @@ export default function MemberDirectory({
   onAddMember,
 }: MemberDirectoryProps) {
   const [search, setSearch] = useState("");
-  const [branchFilter, setBranchFilter] = useState("all");
   const [genFilter, setGenFilter] = useState("all");
   const [bloodFilter, setBloodFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
@@ -39,7 +38,6 @@ export default function MemberDirectory({
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
-      if (branchFilter !== "all" && m.branchId !== branchFilter) return false;
       if (genFilter !== "all" && m.generation !== Number(genFilter)) return false;
       if (bloodFilter !== "all" && m.bloodGroup !== bloodFilter) return false;
       if (search.trim()) {
@@ -58,7 +56,7 @@ export default function MemberDirectory({
       }
       return true;
     });
-  }, [members, search, branchFilter, genFilter, bloodFilter]);
+  }, [members, search, genFilter, bloodFilter]);
 
   return (
     <div className="space-y-4">
@@ -85,26 +83,14 @@ export default function MemberDirectory({
           </button>
         </div>
 
-        <div className={`${showFilters ? "grid" : "hidden md:grid"} grid-cols-3 gap-2`}>
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white"
-          >
-            <option value="all">{lang === "bn" ? "শাখা" : "Branch"}</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {lang === "bn" ? b.nameBn : b.nameEn}
-              </option>
-            ))}
-          </select>
-
+        {/* Filter Row: Only Gen and Blood */}
+        <div className={`${showFilters ? "grid" : "hidden md:grid"} grid-cols-2 gap-2`}>
           <select
             value={genFilter}
             onChange={(e) => setGenFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white"
+            className="px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white font-medium"
           >
-            <option value="all">{lang === "bn" ? "প্রজন্ম" : "Gen"}</option>
+            <option value="all">{lang === "bn" ? "সকল প্রজন্ম (All Gen)" : "All Gen"}</option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
               <option key={g} value={g}>
                 G{g}
@@ -117,7 +103,7 @@ export default function MemberDirectory({
             onChange={(e) => setBloodFilter(e.target.value)}
             className="px-3 py-1.5 rounded-xl border border-stone-200 text-xs bg-white font-bold text-rose-700"
           >
-            <option value="all">{lang === "bn" ? "রক্ত" : "Blood"}</option>
+            <option value="all">{lang === "bn" ? "সকল রক্তের গ্রুপ (Blood)" : "All Blood"}</option>
             {BLOOD_GROUPS.map((bg) => (
               <option key={bg} value={bg}>
                 {bg}

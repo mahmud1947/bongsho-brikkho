@@ -23,6 +23,9 @@ import {
   Sparkles,
   Camera,
   Trash2,
+  ArrowRight,
+  UserCheck,
+  UserPlus,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { BloodGroup, UserProfile, formatSocialUrl } from "@/types/family";
@@ -181,6 +184,22 @@ export default function ProfilePage() {
         if (parts[1]) setBirthMonthPart(parts[1]);
         if (parts[2]) setBirthDayPart(parts[2]);
       }
+    } else {
+      // Reset form for fresh creation
+      setNameBn("");
+      setNameEn("");
+      setGender("male");
+      setPhotoUrl("");
+      setBloodGroup("O+");
+      setLocationBn("");
+      setPhone("");
+      setWhatsapp("");
+      setWhatsappSameAsPhone(true);
+      setSocialLink("");
+      setBio("");
+      setBirthYearPart("unknown");
+      setBirthMonthPart("");
+      setBirthDayPart("");
     }
   }, [currentUserProfile]);
 
@@ -296,23 +315,38 @@ export default function ProfilePage() {
     return `https://wa.me/${digits}`;
   };
 
-  // STEP 1: Not Logged In
+  // ==========================================
+  // STATE 1: NOT LOGGED IN (লগইন করা নেই)
+  // ==========================================
   if (!currentUsername) {
     return (
       <div className="max-w-md mx-auto space-y-4 px-2 sm:px-0">
+        {/* Clear Status Notice: NOT LOGGED IN */}
+        <div className="bg-rose-50 border-2 border-rose-200 p-3.5 rounded-3xl text-rose-950 flex items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 flex-shrink-0 animate-ping"></span>
+            <span className="font-bold text-xs sm:text-sm">
+              {lang === "bn" ? "আপনি বর্তমানে লগইন অবস্থায় নেই" : "You are currently NOT logged in"}
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 font-extrabold text-[10px]">
+            {lang === "bn" ? "অফলাইন" : "OFFLINE"}
+          </span>
+        </div>
+
         <div className="bg-white rounded-3xl border border-stone-200/90 p-5 sm:p-7 shadow-sm space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-950 text-amber-400 flex items-center justify-center shadow-sm flex-shrink-0">
-              <AtSign className="w-6 h-6" />
+              <UserPlus className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight">
-                {lang === "bn" ? "ব্যক্তিগত অ্যাকাউন্ট" : "Personal Account"}
+                {lang === "bn" ? "প্রোফাইল প্রবেশ বা তৈরি" : "Profile Access or Setup"}
               </h2>
               <p className="text-xs text-stone-500 mt-0.5">
                 {lang === "bn"
-                  ? "ইউজারনেম দিয়ে লগইন বা প্রোফাইল তৈরি করুন"
-                  : "Login or create profile with username"}
+                  ? "ইউজারনেম দিয়ে সহজেই লগইন করুন বা নতুন প্রোফাইল শুরু করুন"
+                  : "Login or start a new personal profile with username"}
               </p>
             </div>
           </div>
@@ -325,8 +359,8 @@ export default function ProfilePage() {
             className="space-y-3"
           >
             <div>
-              <label className="block text-[11px] font-bold text-stone-600 mb-1">
-                {lang === "bn" ? "ইউজারনেম (Username)" : "Username"}
+              <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                {lang === "bn" ? "আপনার ইউজারনেম দিন (Username)" : "Enter Your Username"}
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 font-bold text-sm">@</span>
@@ -345,18 +379,28 @@ export default function ProfilePage() {
               type="submit"
               className="w-full py-2.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-sm shadow cursor-pointer transition flex items-center justify-center gap-2"
             >
-              <User className="w-4 h-4" />
-              <span>{lang === "bn" ? "এগিয়ে যান" : "Continue"}</span>
+              <span>{lang === "bn" ? "এগিয়ে যান (লগইন / নতুন অ্যাকাউন্ট)" : "Continue (Login / Register)"}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          <div className="pt-2 border-t border-stone-100 flex items-center gap-2 text-[11px] text-stone-500">
-            <Shield className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-            <span>
-              {lang === "bn"
-                ? "এটি আপনার পার্সোনাল আইডি, যা বংশবৃক্ষের ডেটার সাথে যুক্ত হবে না।"
-                : "Personal ID kept independent from family tree nodes."}
-            </span>
+          <div className="pt-2 border-t border-stone-100 space-y-1.5 text-[11px] text-stone-500">
+            <p className="flex items-center gap-1.5">
+              <span className="text-emerald-700 font-bold">✓</span>
+              <span>
+                {lang === "bn"
+                  ? "আগে অ্যাকাউন্ট থাকলে আপনার ইউজারনেম দিলেই সরাসরি প্রোফাইল ওপেন হবে।"
+                  : "If you already created an account, entering your username logs you in directly."}
+              </span>
+            </p>
+            <p className="flex items-center gap-1.5">
+              <span className="text-amber-600 font-bold">✓</span>
+              <span>
+                {lang === "bn"
+                  ? "নতুন হলে পছন্দের যেকোনো ইউজারনেম দিয়ে নতুন অ্যাকাউন্ট খুলতে পারবেন।"
+                  : "If you are new, you can create a fresh profile under any available username."}
+              </span>
+            </p>
           </div>
         </div>
 
@@ -365,20 +409,84 @@ export default function ProfilePage() {
     );
   }
 
-  // STEP 2: Creating or Editing Personal Profile Form
-  if (!currentUserProfile || isEditing) {
+  // ==========================================
+  // STATE 2: USERNAME CHOSEN, BUT PROFILE NOT CREATED YET OR EDITING
+  // ==========================================
+  const isNewAccount = !currentUserProfile;
+
+  if (isNewAccount || isEditing) {
     return (
-      <div className="max-w-xl mx-auto space-y-4 px-1 sm:px-0">
+      <div className="max-w-xl mx-auto space-y-3.5 px-1 sm:px-0">
+        {/* CLEAR STATUS BANNER: Distinct for New Setup vs Editing */}
+        {isNewAccount ? (
+          <div className="bg-amber-500/10 border-2 border-amber-500/30 p-3.5 rounded-3xl text-stone-900 space-y-1.5 shadow-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0"></span>
+                <span className="font-extrabold text-xs sm:text-sm text-amber-950">
+                  {lang === "bn" ? `অ্যাকাউন্ট এখনো তৈরি হয়নি: @${currentUsername}` : `Account Not Created Yet: @${currentUsername}`}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-amber-400 text-emerald-950 font-black text-[10px]">
+                {lang === "bn" ? "নতুন অ্যাকাউন্ট" : "NEW SETUP"}
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-stone-700 leading-relaxed">
+              {lang === "bn"
+                ? `আপনি "@${currentUsername}" দিয়েছেন। এই নামে এখনো প্রোফাইল তৈরি হয়নি। নিচের তথ্যগুলো দিয়ে প্রোফাইল তৈরি সম্পন্ন করুন।`
+                : `You entered "@${currentUsername}". No profile exists for this username yet. Please fill in your details below to complete your account.`}
+            </p>
+            <div className="pt-0.5 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={logoutUsername}
+                className="text-[11px] font-bold text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>{lang === "bn" ? "ভুল নাম? অন্য ইউজারনেম দিন" : "Switch / Change Username"}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-blue-600/10 border-2 border-blue-600/30 p-3 rounded-3xl text-blue-950 flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <Edit3 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <span className="font-bold text-xs sm:text-sm text-blue-950 block truncate">
+                  {lang === "bn" ? `প্রোফাইল তথ্য পরিবর্তন (@${currentUsername})` : `Editing Profile (@${currentUsername})`}
+                </span>
+                <span className="text-[10px] text-blue-700 block">
+                  {lang === "bn" ? "পরিবর্তনগুলো শেষ করে নিচে সংরক্ষণ করুন" : "Update your info and save changes below"}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="px-2.5 py-1 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-bold transition cursor-pointer flex-shrink-0"
+            >
+              {lang === "bn" ? "বাতিল" : "Cancel"}
+            </button>
+          </div>
+        )}
+
+        {/* Profile Form Card */}
         <div className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-sm">
-          {/* Mobile-First Header */}
-          <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 px-4 py-3.5 sm:px-5 sm:py-4 text-white flex items-center justify-between">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 px-4 py-3 sm:px-5 sm:py-3.5 text-white flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center flex-shrink-0">
-                <Edit3 className="w-4 h-4" />
+                {isNewAccount ? <UserPlus className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-amber-300/90 block">
-                  {lang === "bn" ? "প্রোফাইল তথ্য" : "Personal Info"}
+                  {isNewAccount
+                    ? lang === "bn"
+                      ? "নতুন অ্যাকাউন্ট সেটআপ"
+                      : "New Account Registration"
+                    : lang === "bn"
+                    ? "তথ্য সম্পাদনা"
+                    : "Edit Details"}
                 </span>
                 <span className="font-bold text-sm sm:text-base text-white truncate block">
                   @{currentUsername}
@@ -387,7 +495,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              {currentUserProfile && (
+              {!isNewAccount && (
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
@@ -409,16 +517,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Discreet Identity Pill */}
-          <div className="px-4 py-2 bg-stone-50 border-b border-stone-200/70 flex items-center gap-2 text-[11px] text-stone-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 flex-shrink-0"></span>
-            <span className="truncate">
-              {lang === "bn"
-                ? "ব্যক্তিগত অ্যাকাউন্ট • বংশবৃক্ষের ডেটার সাথে সরাসরি সংযুক্ত নয়"
-                : "Personal Profile • Stored independently from family tree"}
-            </span>
-          </div>
-
           {formError && (
             <div className="mx-4 mt-3 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
@@ -431,10 +529,10 @@ export default function ProfilePage() {
             <div className="bg-stone-50/70 p-3 sm:p-3.5 rounded-2xl border border-stone-200/80 space-y-3">
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
                 <User className="w-3.5 h-3.5 text-emerald-700" />
-                <span>{lang === "bn" ? "১. পরিচয় ও মৌলিক তথ্য" : "1. Basic Identity"}</span>
+                <span>{lang === "bn" ? "১. পরিচয় ও ছবি" : "1. Identity & Photo"}</span>
               </div>
 
-              {/* প্রোফাইল ছবি (Free Upload) */}
+              {/* প্রোফাইল ছবি (Upload) */}
               <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80">
                 <div className="relative w-14 h-14 rounded-2xl bg-emerald-950 text-amber-300 font-bold text-xl flex items-center justify-center overflow-hidden flex-shrink-0 border border-stone-200">
                   {photoUrl ? (
@@ -825,10 +923,18 @@ export default function ProfilePage() {
                 className="w-full py-3 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-sm shadow-md cursor-pointer transition flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                <span>{lang === "bn" ? "প্রোফাইল সংরক্ষণ করুন" : "Save Profile"}</span>
+                <span>
+                  {isNewAccount
+                    ? lang === "bn"
+                      ? "অ্যাকাউন্ট ও প্রোফাইল তৈরি সম্পন্ন করুন"
+                      : "Complete Account Setup"
+                    : lang === "bn"
+                    ? "পরিবর্তন সংরক্ষণ করুন"
+                    : "Save Changes"}
+                </span>
               </button>
 
-              {currentUserProfile && (
+              {!isNewAccount && (
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
@@ -846,14 +952,16 @@ export default function ProfilePage() {
     );
   }
 
-  // STEP 3: Viewing Personal Profile (Beautiful Mobile-First Profile Card)
+  // ==========================================
+  // STATE 3: LOGGED IN & ACCOUNT ALREADY CREATED (সক্রিয় অ্যাকাউন্ট ও প্রোফাইল ভিউ)
+  // ==========================================
   const displayName =
     lang === "bn"
       ? currentUserProfile.nameBn || currentUserProfile.nameEn
       : currentUserProfile.nameEn || currentUserProfile.nameBn;
 
   return (
-    <div className="max-w-xl mx-auto space-y-4 px-1 sm:px-0">
+    <div className="max-w-xl mx-auto space-y-3.5 px-1 sm:px-0">
       {saveSuccess && (
         <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -865,6 +973,46 @@ export default function ProfilePage() {
           </button>
         </div>
       )}
+
+      {/* CRYSTAL CLEAR STATUS BANNER: LOGGED IN & ACCOUNT ACTIVE */}
+      <div className="bg-emerald-600/10 border-2 border-emerald-600/30 p-3 sm:p-3.5 rounded-3xl text-emerald-950 flex items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-800 text-amber-300 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-extrabold text-xs sm:text-sm text-emerald-950 truncate">
+                {lang === "bn" ? `লগইন আছেন: @${currentUserProfile.username}` : `Logged In: @${currentUserProfile.username}`}
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white font-extrabold text-[9px] tracking-wide">
+                ACTIVE
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-800 truncate">
+              {lang === "bn" ? "আপনার ব্যক্তিগত অ্যাকাউন্ট তৈরি সম্পন্ন ও সক্রিয়" : "Your personal profile is active & verified"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-900 text-amber-300 font-bold text-xs flex items-center gap-1 shadow-sm hover:bg-emerald-800 transition cursor-pointer"
+          >
+            <Edit3 className="w-3 h-3" />
+            <span>{lang === "bn" ? "এডিট" : "Edit"}</span>
+          </button>
+          <button
+            onClick={logoutUsername}
+            className="px-2.5 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+            title={lang === "bn" ? "লগআউট" : "Logout"}
+          >
+            <LogOut className="w-3 h-3" />
+            <span className="hidden sm:inline">{lang === "bn" ? "লগআউট" : "Logout"}</span>
+          </button>
+        </div>
+      </div>
 
       {/* Main Profile Card */}
       <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm overflow-hidden">
@@ -919,16 +1067,6 @@ export default function ProfilePage() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Discreet Context Banner */}
-        <div className="px-4 py-2 bg-stone-50 border-b border-stone-200/70 flex items-center gap-2 text-[11px] text-stone-600">
-          <Shield className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-          <span className="truncate">
-            {lang === "bn"
-              ? "ব্যক্তিগত অ্যাকাউন্ট • বংশবৃক্ষের ডেটা থেকে সম্পূর্ণ আলাদা"
-              : "Personal Profile • Stored independently from family tree"}
-          </span>
         </div>
 
         {/* Quick Contact Action Pills */}
@@ -1053,13 +1191,20 @@ export default function ProfilePage() {
           )}
 
           {/* Edit Profile Big Action Button */}
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-2">
             <button
               onClick={() => setIsEditing(true)}
-              className="w-full py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs sm:text-sm shadow-sm cursor-pointer transition flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-2xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs sm:text-sm shadow-sm cursor-pointer transition flex items-center justify-center gap-2"
             >
               <Edit3 className="w-4 h-4" />
               <span>{lang === "bn" ? "প্রোফাইল তথ্য পরিবর্তন করুন" : "Edit Profile Info"}</span>
+            </button>
+            <button
+              onClick={logoutUsername}
+              className="py-2.5 px-5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm border border-rose-200 cursor-pointer transition flex items-center justify-center gap-1.5"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>{lang === "bn" ? "লগআউট" : "Logout"}</span>
             </button>
           </div>
         </div>
