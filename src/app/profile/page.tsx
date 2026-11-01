@@ -21,11 +21,14 @@ import {
   CheckCircle2,
   Shield,
   Sparkles,
+  Camera,
+  Trash2,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import { BloodGroup, UserProfile, formatSocialUrl } from "@/types/family";
 import AdminLoginCard from "@/components/AdminLoginCard";
 import CountryFlag from "@/components/CountryFlag";
+import { compressImageFile } from "@/lib/imageUtils";
 
 const BLOOD_GROUPS: BloodGroup[] = [
   "A+",
@@ -108,6 +111,8 @@ export default function ProfilePage() {
   const [nameBn, setNameBn] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [gender, setGender] = useState<"male" | "female">("male");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>("O+");
   const [professionSelect, setProfessionSelect] = useState<string>("শিক্ষার্থী");
   const [professionCustom, setProfessionCustom] = useState<string>("");
@@ -134,6 +139,7 @@ export default function ProfilePage() {
       setNameBn(currentUserProfile.nameBn || "");
       setNameEn(currentUserProfile.nameEn || "");
       setGender(currentUserProfile.gender || "male");
+      setPhotoUrl(currentUserProfile.photoUrl || "");
       setBloodGroup(currentUserProfile.bloodGroup || "O+");
       setLocationBn(currentUserProfile.locationBn || "");
       setPhone(currentUserProfile.phone || "");
@@ -260,6 +266,7 @@ export default function ProfilePage() {
       nameBn: finalNameBn,
       nameEn: finalNameEn,
       gender,
+      photoUrl: photoUrl.trim() || undefined,
       bloodGroup,
       professionBn: finalProfBn,
       professionEn: finalProfEn,
@@ -425,6 +432,65 @@ export default function ProfilePage() {
               <div className="flex items-center gap-1.5 text-xs font-bold text-stone-700">
                 <User className="w-3.5 h-3.5 text-emerald-700" />
                 <span>{lang === "bn" ? "১. পরিচয় ও মৌলিক তথ্য" : "1. Basic Identity"}</span>
+              </div>
+
+              {/* প্রোফাইল ছবি (Free Upload) */}
+              <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80">
+                <div className="relative w-14 h-14 rounded-2xl bg-emerald-950 text-amber-300 font-bold text-xl flex items-center justify-center overflow-hidden flex-shrink-0 border border-stone-200">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{(nameBn || nameEn || currentUsername || "U").charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <span className="block text-[11px] font-bold text-stone-700">
+                    {lang === "bn" ? "প্রোফাইল ছবি (ঐচ্ছিক)" : "Profile Photo (Optional)"}
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 text-xs font-bold cursor-pointer transition">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>
+                        {isUploadingPhoto
+                          ? lang === "bn"
+                            ? "প্রসেস হচ্ছে..."
+                            : "Processing..."
+                          : lang === "bn"
+                          ? "ছবি সিলেক্ট করুন"
+                          : "Choose Photo"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setIsUploadingPhoto(true);
+                          try {
+                            const dataUrl = await compressImageFile(file, 360, 0.78);
+                            setPhotoUrl(dataUrl);
+                          } catch {
+                            setFormError(lang === "bn" ? "ছবি প্রসেস করা যায়নি" : "Failed to process photo");
+                          } finally {
+                            setIsUploadingPhoto(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                    {photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setPhotoUrl("")}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{lang === "bn" ? "মুছুন" : "Remove"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -806,9 +872,17 @@ export default function ProfilePage() {
         <div className="bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 p-5 sm:p-6 text-white relative">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 text-emerald-950 font-black text-2xl sm:text-3xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white/20">
-                {displayName.charAt(0) || "U"}
-              </div>
+              {currentUserProfile.photoUrl ? (
+                <img
+                  src={currentUserProfile.photoUrl}
+                  alt={displayName}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover flex-shrink-0 shadow-lg ring-2 ring-amber-400/60"
+                />
+              ) : (
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-300 text-emerald-950 font-black text-2xl sm:text-3xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white/20">
+                  {displayName.charAt(0) || "U"}
+                </div>
+              )}
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                   <span className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">

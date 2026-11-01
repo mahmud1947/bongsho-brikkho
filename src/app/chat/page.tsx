@@ -5,6 +5,51 @@ import FamilyChat from "@/components/FamilyChat";
 import { useFamily } from "@/context/FamilyContext";
 
 export default function ChatPage() {
-  const { chatMessages, lang, currentUsername, currentUserProfile, isAdmin, sendChatMessage, deleteChatMessage, openDeletePrompt } = useFamily();
-  return <FamilyChat messages={chatMessages} lang={lang} currentUsername={currentUsername} currentUserProfile={currentUserProfile} isAdmin={isAdmin} onSend={sendChatMessage} onDelete={(id) => openDeletePrompt({ title: lang === "bn" ? "বার্তা মুছুন" : "Delete Message", onConfirm: () => deleteChatMessage(id) })} />;
+  const {
+    chatMessages,
+    members,
+    lang,
+    currentUsername,
+    currentUserProfile,
+    isAdmin,
+    loginUsername,
+    saveUserProfile,
+    sendChatMessage,
+    deleteChatMessage,
+    openDeletePrompt,
+  } = useFamily();
+
+  return (
+    <FamilyChat
+      messages={chatMessages}
+      members={members}
+      lang={lang}
+      currentUsername={currentUsername}
+      currentUserProfile={currentUserProfile}
+      isAdmin={isAdmin}
+      onSend={sendChatMessage}
+      onUpdate={sendChatMessage}
+      onDeleteOwn={deleteChatMessage}
+      onDeleteAdmin={(id) =>
+        openDeletePrompt({
+          title: lang === "bn" ? "বার্তা মুছুন" : "Delete Message",
+          onConfirm: () => deleteChatMessage(id),
+        })
+      }
+      onQuickLogin={async (username, displayName) => {
+        const cleanUser = username.trim().toLowerCase().replace(/^@/, "");
+        if (!cleanUser) return;
+        loginUsername(cleanUser);
+        if (displayName.trim()) {
+          await saveUserProfile({
+            username: cleanUser,
+            nameBn: displayName.trim(),
+            nameEn: displayName.trim(),
+            gender: "male",
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }}
+    />
+  );
 }

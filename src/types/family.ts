@@ -72,6 +72,7 @@ export interface UserProfile {
   nameBn: string;
   nameEn: string;
   gender: "male" | "female";
+  photoUrl?: string;
   phone?: string;
   whatsapp?: string;
   socialLink?: string;
@@ -129,9 +130,22 @@ export interface FamilyNotice {
 export interface FamilyChatMessage {
   id: string;
   text: string;
+  imageUrl?: string;
   authorUsername: string;
   authorName: string;
+  authorNameBn?: string;
+  authorNameEn?: string;
+  authorCountry?: string;
+  authorPhotoUrl?: string;
   createdAt: string;
+  editedAt?: string;
+  isPinned?: boolean;
+  replyTo?: {
+    id: string;
+    authorName: string;
+    text: string;
+  };
+  reactions?: Record<string, string[]>;
 }
 
 export function formatSocialUrl(raw?: string): string {

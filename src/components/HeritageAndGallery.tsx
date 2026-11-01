@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { History, Camera, MapPin, Calendar, Plus, Trash2 } from "lucide-react";
+import { History, Camera, MapPin, Calendar, Plus, Trash2, Upload, X } from "lucide-react";
 import { GalleryItem, Language, TimelineEvent } from "@/types/family";
+import { compressImageFile } from "@/lib/imageUtils";
 
 interface HeritageAndGalleryProps {
   timeline: TimelineEvent[];
@@ -37,6 +38,7 @@ export default function HeritageAndGallery({
   const [locationBn, setLocationBn] = useState("");
   const [category, setCategory] = useState<GalleryItem["category"]>("reunion");
   const [imageUrl, setImageUrl] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const filteredGallery =
     selectedCategory === "all"
@@ -218,18 +220,71 @@ export default function HeritageAndGallery({
               <option value="reunion">{lang === "bn" ? "মিলনমেলা" : "Reunion"}</option>
               <option value="documents">{lang === "bn" ? "দলিল" : "Deeds"}</option>
             </select>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                required
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Image URL *"
-                className="flex-1 px-3 py-2 rounded-xl border border-stone-200"
-              />
+            <div className="flex items-center gap-2 sm:col-span-5">
+              <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold cursor-pointer transition flex-shrink-0">
+                <Upload className="w-3.5 h-3.5" />
+                <span>
+                  {isUploadingImage
+                    ? lang === "bn"
+                      ? "প্রসেস হচ্ছে..."
+                      : "Processing..."
+                    : lang === "bn"
+                    ? "গ্যালারি থেকে ছবি নিন"
+                    : "Upload Photo"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setIsUploadingImage(true);
+                    try {
+                      const compressed = await compressImageFile(file, 900, 0.76);
+                      setImageUrl(compressed);
+                    } catch {
+                      alert(lang === "bn" ? "ছবি প্রসেস করা যায়নি" : "Failed to process image");
+                    } finally {
+                      setIsUploadingImage(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+              </label>
+
+              {imageUrl.startsWith("data:image") ? (
+                <div className="flex items-center gap-2 flex-1 min-w-0 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="w-7 h-7 rounded-lg object-cover border border-emerald-300"
+                  />
+                  <span className="text-emerald-900 font-semibold truncate flex-1">
+                    {lang === "bn" ? "ছবি যুক্ত হয়েছে" : "Photo ready"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl("")}
+                    className="p-1 text-rose-600 hover:bg-rose-100 rounded-lg cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder={lang === "bn" ? "অথবা ছবির লিংক (URL) দিন..." : "Or paste Image URL..."}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-stone-200"
+                />
+              )}
+
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold cursor-pointer"
+                disabled={!titleBn.trim() || !imageUrl.trim() || isUploadingImage}
+                className="px-4 py-2 rounded-xl bg-emerald-900 text-amber-300 font-bold cursor-pointer disabled:opacity-50 flex-shrink-0"
               >
                 {lang === "bn" ? "সেইভ" : "Save"}
               </button>
