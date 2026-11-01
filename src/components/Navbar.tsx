@@ -25,6 +25,7 @@ export default function Navbar() {
     resetData,
     members,
     chatMessages,
+    unseenChatCount,
     isAdmin,
     logoutAdmin,
     currentUsername,
@@ -62,7 +63,7 @@ export default function Navbar() {
       labelBn: "চ্যাট",
       labelEn: "Chat",
       icon: <MessageCircle className="w-4 h-4" />,
-      badge: chatMessages.length || undefined,
+      badge: unseenChatCount > 0 ? unseenChatCount : undefined,
     },
   ];
 

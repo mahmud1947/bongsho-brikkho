@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import FamilyChat from "@/components/FamilyChat";
 import { useFamily } from "@/context/FamilyContext";
 
@@ -17,7 +17,12 @@ export default function ChatPage() {
     sendChatMessage,
     deleteChatMessage,
     openDeletePrompt,
+    markChatAsRead,
   } = useFamily();
+
+  useEffect(() => {
+    markChatAsRead();
+  }, [markChatAsRead, chatMessages.length]);
 
   return (
     <div className="w-full h-full flex flex-col min-h-0 flex-1 overflow-hidden">
@@ -28,6 +33,7 @@ export default function ChatPage() {
         currentUsername={currentUsername}
         currentUserProfile={currentUserProfile}
         isAdmin={isAdmin}
+        onMarkRead={markChatAsRead}
         onSend={sendChatMessage}
         onUpdate={sendChatMessage}
         onDeleteOwn={deleteChatMessage}

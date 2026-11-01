@@ -1,6 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  playNotificationChime,
+  vibrateDevice,
+  showBrowserNotification,
+} from "@/lib/notificationUtils";
 import {
   collection,
   doc,
@@ -37,6 +42,8 @@ interface FamilyContextType {
   gallery: GalleryItem[];
   notices: FamilyNotice[];
   chatMessages: FamilyChatMessage[];
+  unseenChatCount: number;
+  markChatAsRead: () => void;
   currentUsername: string | null;
   currentUserProfile: UserProfile | null;
   loginUsername: (username: string) => void;
@@ -102,7 +109,47 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [notices, setNotices] = useState<FamilyNotice[]>([]);
   const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>([]);
+  const [unseenChatCount, setUnseenChatCount] = useState<number>(0);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const currentUsernameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentUsernameRef.current = currentUsername;
+  }, [currentUsername]);
+
+  const markChatAsRead = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const now = new Date().toISOString();
+    const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "guest";
+    localStorage.setItem(`bongsho_chat_last_read_${user}`, now);
+    setUnseenChatCount(0);
+  }, []);
+
+  const calculateUnseen = useCallback((messagesList: FamilyChatMessage[]) => {
+    if (typeof window === "undefined") return;
+    const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "guest";
+    const lastRead = localStorage.getItem(`bongsho_chat_last_read_${user}`);
+
+    // If currently on /chat page, clear unseen count immediately
+    if (window.location.pathname.includes("/chat")) {
+      const now = new Date().toISOString();
+      localStorage.setItem(`bongsho_chat_last_read_${user}`, now);
+      setUnseenChatCount(0);
+      return;
+    }
+
+    if (!lastRead) {
+      const unseen = messagesList.filter((m) => m.authorUsername !== user);
+      setUnseenChatCount(unseen.length);
+      return;
+    }
+
+    const unseen = messagesList.filter((m) => {
+      if (m.authorUsername === user) return false;
+      return m.createdAt > lastRead;
+    });
+    setUnseenChatCount(unseen.length);
+  }, []);
 
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -220,10 +267,45 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       setNotices(list);
     });
 
+    let isInitialChatSnapshot = true;
     const unsubChatMessages = onSnapshot(collection(db, "chat_messages"), (snap) => {
       const list = snap.docs.map((d) => d.data() as FamilyChatMessage);
       list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       setChatMessages(list);
+
+      // Skip sound and notification on initial load
+      if (isInitialChatSnapshot) {
+        isInitialChatSnapshot = false;
+        return;
+      }
+
+      // Check for incoming new messages
+      const addedChanges = snap.docChanges().filter((change) => change.type === "added");
+      if (addedChanges.length > 0) {
+        const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "guest";
+        const newOthersMessages = addedChanges
+          .map((c) => c.doc.data() as FamilyChatMessage)
+          .filter((m) => m.authorUsername !== user)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+        if (newOthersMessages.length > 0) {
+          const newest = newOthersMessages[0];
+          playNotificationChime();
+          vibrateDevice([140, 70, 140]);
+
+          const senderName =
+            newest.authorNameBn ||
+            newest.authorNameEn ||
+            `@${newest.authorUsername}`;
+          const bodyText =
+            newest.text || (newest.imageUrl ? "📷 ছবি পাঠিয়েছেন" : "নতুন বার্তা");
+
+          showBrowserNotification(`বংশবৃক্ষ চ্যাট: ${senderName}`, {
+            body: bodyText,
+            tag: `bongsho-chat-${newest.id}`,
+          });
+        }
+      }
     });
 
     return () => {
@@ -263,6 +345,22 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsub();
   }, [currentUsername]);
+
+  // Recalculate unseen messages when chat messages or current user changes
+  useEffect(() => {
+    calculateUnseen(chatMessages);
+  }, [chatMessages, currentUsername, calculateUnseen]);
+
+  // If window regains focus while on /chat, auto-mark as read
+  useEffect(() => {
+    const handleFocus = () => {
+      if (typeof window !== "undefined" && window.location.pathname.includes("/chat")) {
+        markChatAsRead();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [markChatAsRead]);
 
   const saveUserProfile = async (profile: UserProfile) => {
     setCurrentUserProfile(profile);
@@ -539,6 +637,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         gallery,
         notices,
         chatMessages,
+        unseenChatCount,
+        markChatAsRead,
         currentUsername,
         currentUserProfile,
         loginUsername,

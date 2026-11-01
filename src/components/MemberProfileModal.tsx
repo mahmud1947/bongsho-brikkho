@@ -227,24 +227,44 @@ export default function MemberProfileModal({
 
           {/* Relatives */}
           <div className="space-y-3 pt-2 border-t border-stone-100">
-            {parent && (
-              <div>
-                <p className="text-xs font-bold text-stone-500 mb-1">
-                  {parent.gender === "female"
-                    ? (lang === "bn" ? "মাতা" : "Mother")
-                    : parent.gender === "male"
-                    ? (lang === "bn" ? "পিতা" : "Father")
-                    : (lang === "bn" ? "পিতা / মাতা" : "Parent")}
-                </p>
-                <button
-                  onClick={() => onSelectMember(parent)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-xs font-bold cursor-pointer hover:bg-emerald-100 transition"
-                >
-                  <span>{lang === "bn" ? parent.nameBn : parent.nameEn}</span>
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+            {parent && (() => {
+              const isFemale =
+                parent.gender === "female" ||
+                parent.nameBn?.includes("বেগম") ||
+                parent.nameBn?.includes("খাতুন") ||
+                parent.nameBn?.includes("বিবি") ||
+                parent.nameEn?.toLowerCase().includes("begum") ||
+                parent.nameEn?.toLowerCase().includes("khatun") ||
+                parent.nameEn?.toLowerCase().includes("bibi");
+
+              const isMale =
+                parent.gender === "male" ||
+                parent.nameBn?.includes("আলী") ||
+                parent.nameBn?.includes("রহমান") ||
+                parent.nameBn?.includes("উদ্দিন") ||
+                parent.nameEn?.toLowerCase().includes("ali") ||
+                parent.nameEn?.toLowerCase().includes("rahman") ||
+                parent.nameEn?.toLowerCase().includes("uddin");
+
+              return (
+                <div>
+                  <p className="text-xs font-bold text-stone-500 mb-1">
+                    {isFemale
+                      ? (lang === "bn" ? "মাতা" : "Mother")
+                      : isMale
+                      ? (lang === "bn" ? "পিতা" : "Father")
+                      : (lang === "bn" ? "পিতা / মাতা" : "Parent")}
+                  </p>
+                  <button
+                    onClick={() => onSelectMember(parent)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-xs font-bold cursor-pointer hover:bg-emerald-100 transition"
+                  >
+                    <span>{lang === "bn" ? parent.nameBn : parent.nameEn}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              );
+            })()}
 
             {children.length > 0 && (
               <div>

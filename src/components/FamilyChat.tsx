@@ -3,6 +3,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
+  Bell,
+  BellOff,
+  BellRing,
   Check,
   Copy,
   CornerUpLeft,
@@ -29,6 +32,10 @@ import {
   getCountryFlag,
 } from "@/types/family";
 import { compressImageFile } from "@/lib/imageUtils";
+import {
+  getNotificationPermission,
+  requestChatNotificationPermission,
+} from "@/lib/notificationUtils";
 
 interface FamilyChatProps {
   messages: FamilyChatMessage[];
@@ -37,6 +44,7 @@ interface FamilyChatProps {
   currentUsername: string | null;
   currentUserProfile: UserProfile | null;
   isAdmin: boolean;
+  onMarkRead?: () => void;
   onSend: (message: FamilyChatMessage) => Promise<void>;
   onUpdate?: (message: FamilyChatMessage) => Promise<void>;
   onDeleteOwn?: (id: string) => Promise<void>;
@@ -119,6 +127,7 @@ export default function FamilyChat({
   currentUsername,
   currentUserProfile,
   isAdmin,
+  onMarkRead,
   onSend,
   onUpdate,
   onDeleteOwn,
@@ -130,6 +139,24 @@ export default function FamilyChat({
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  // Notification states
+  const [notifPermission, setNotifPermission] = useState<string>("default");
+  const [dismissNotifBanner, setDismissNotifBanner] = useState(false);
+
+  useEffect(() => {
+    setNotifPermission(getNotificationPermission());
+  }, []);
+
+  const handleToggleNotification = async () => {
+    const res = await requestChatNotificationPermission();
+    setNotifPermission(res);
+  };
+
+  // Mark chat as read when mounted or when message count changes
+  useEffect(() => {
+    onMarkRead?.();
+  }, [messages.length, onMarkRead]);
 
   // Interactive states
   const [replyingTo, setReplyingTo] = useState<FamilyChatMessage | null>(null);
@@ -524,6 +551,40 @@ export default function FamilyChat({
             </button>
           )}
 
+          {/* Notification Permission Toggle */}
+          <button
+            type="button"
+            onClick={handleToggleNotification}
+            className={`p-2 rounded-xl transition cursor-pointer ${
+              notifPermission === "granted"
+                ? "bg-emerald-900/80 hover:bg-emerald-800 text-amber-300 border border-emerald-700/70"
+                : notifPermission === "denied"
+                ? "bg-rose-900/40 text-rose-300 border border-rose-700/40"
+                : "bg-amber-400 text-emerald-950 shadow-xs"
+            }`}
+            title={
+              notifPermission === "granted"
+                ? lang === "bn"
+                  ? "নোটিফিকেশন চালু আছে"
+                  : "Notifications active"
+                : notifPermission === "denied"
+                ? lang === "bn"
+                  ? "নোটিফিকেশন ব্লক করা আছে"
+                  : "Notifications blocked"
+                : lang === "bn"
+                ? "ফ্রি নোটিফিকেশন চালু করুন"
+                : "Enable free notifications"
+            }
+          >
+            {notifPermission === "granted" ? (
+              <BellRing className="w-4 h-4" />
+            ) : notifPermission === "denied" ? (
+              <BellOff className="w-4 h-4" />
+            ) : (
+              <Bell className="w-4 h-4" />
+            )}
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -564,6 +625,37 @@ export default function FamilyChat({
           )}
         </div>
       </header>
+
+      {/* NOTIFICATION PROMPT BANNER */}
+      {notifPermission === "default" && !dismissNotifBanner && (
+        <div className="bg-amber-50 border-b border-amber-200 px-3.5 py-2 flex items-center justify-between gap-2 text-xs text-amber-950 z-10 flex-shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bell className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <span className="truncate">
+              {lang === "bn"
+                ? "নতুন বার্তা আসলে ফ্রি নোটিফিকেশন পেতে চান?"
+                : "Want free alerts when new messages arrive?"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleNotification}
+              className="px-2.5 py-1 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold rounded-lg cursor-pointer transition shadow-2xs text-[11px]"
+            >
+              {lang === "bn" ? "অনুমতি দিন" : "Enable"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissNotifBanner(true)}
+              className="p-1 text-stone-500 hover:text-stone-800 rounded-lg cursor-pointer"
+              title={lang === "bn" ? "বন্ধ করুন" : "Dismiss"}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SEARCH BAR */}
       {isSearchOpen && (

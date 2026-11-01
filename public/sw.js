@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bongsho-brikkho-v16';
+const CACHE_NAME = 'bongsho-brikkho-v17';
 
 // Dynamic base resolution based on where the service worker is registered
 const getBaseScope = () => {
@@ -117,6 +117,26 @@ self.addEventListener('fetch', (event) => {
         .catch(() => cachedResponse);
 
       return cachedResponse || fetchPromise;
+    })
+  );
+});
+
+// Handle push notification clicks (Direct navigation to /chat)
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const base = getBaseScope();
+  const targetUrl = (event.notification.data && event.notification.data.url) || (base + 'chat');
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && client.url.includes('/chat') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });
