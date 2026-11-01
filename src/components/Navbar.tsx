@@ -27,6 +27,8 @@ export default function Navbar() {
     chatMessages,
     isAdmin,
     logoutAdmin,
+    currentUsername,
+    currentUserProfile,
   } = useFamily();
 
   const navItems = [
@@ -137,11 +139,46 @@ export default function Navbar() {
               </button>
               <button
                 onClick={() => openAddModal(null)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs sm:text-sm shadow cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs sm:text-sm shadow cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>{lang === "bn" ? "অ্যাড" : "Add"}</span>
               </button>
+
+              {/* Profile Icon beside Add button (upper right side) */}
+              <Link
+                href="/profile"
+                className={`relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl transition cursor-pointer shadow-xs ${
+                  isRouteActive("/profile")
+                    ? "bg-amber-400 text-emerald-950 ring-2 ring-amber-300/60"
+                    : "bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-amber-300"
+                }`}
+                title={
+                  currentUsername
+                    ? (lang === "bn" ? `@${currentUsername} এর প্রোফাইল` : `Profile (@${currentUsername})`)
+                    : (lang === "bn" ? "প্রোফাইল / সাইন আপ / লগইন" : "Profile / Login / Sign Up")
+                }
+              >
+                {currentUserProfile?.photoUrl ? (
+                  <img
+                    src={currentUserProfile.photoUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : currentUsername ? (
+                  <span className="font-black text-xs">
+                    {(currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername)
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                {/* Active indicator dot if logged in */}
+                {currentUsername && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-950" />
+                )}
+              </Link>
             </div>
           </div>
         </div>

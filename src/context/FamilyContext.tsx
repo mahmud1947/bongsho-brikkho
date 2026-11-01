@@ -8,6 +8,7 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { initialBranches } from "@/data/initialFamilyData";
@@ -39,6 +40,13 @@ interface FamilyContextType {
   currentUsername: string | null;
   currentUserProfile: UserProfile | null;
   loginUsername: (username: string) => void;
+  loginByIdentifier: (
+    identifier: string
+  ) => Promise<{ success: boolean; error?: string; username?: string }>;
+  checkAccountExists: (
+    username: string,
+    phone?: string
+  ) => Promise<{ usernameExists: boolean; phoneExists: boolean }>;
   logoutUsername: () => void;
   saveUserProfile: (profile: UserProfile) => Promise<void>;
   selectedMember: FamilyMember | null;
@@ -276,6 +284,126 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(USERNAME_KEY, norm);
   };
 
+  const loginByIdentifier = async (
+    identifier: string
+  ): Promise<{ success: boolean; error?: string; username?: string }> => {
+    const raw = identifier.trim();
+    if (!raw) {
+      return { success: false, error: "empty_identifier" };
+    }
+
+    const cleanUser = raw.toLowerCase().replace(/^@/, "");
+    const inputDigits = raw.replace(/\D/g, "");
+
+    // 1. If input contains digits (phone number attempt, >= 6 digits)
+    if (inputDigits.length >= 6) {
+      try {
+        const snap = await getDocs(collection(db, "user_profiles"));
+        const matchedDoc = snap.docs.find((d) => {
+          const u = d.data() as UserProfile;
+          if (!u.phone) return false;
+          const uDigits = u.phone.replace(/\D/g, "");
+          if (!uDigits) return false;
+          return (
+            uDigits === inputDigits ||
+            uDigits.endsWith(inputDigits) ||
+            inputDigits.endsWith(uDigits)
+          );
+        });
+
+        if (matchedDoc) {
+          const user = matchedDoc.data() as UserProfile;
+          loginUsername(user.username);
+          return { success: true, username: user.username };
+        }
+      } catch (e) {
+        console.warn("Error querying user_profiles by phone:", e);
+      }
+    }
+
+    // 2. Check if username document exists in user_profiles
+    try {
+      const docRef = doc(db, "user_profiles", cleanUser);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        loginUsername(cleanUser);
+        return { success: true, username: cleanUser };
+      }
+    } catch (e) {
+      console.warn("Error querying user_profiles by username:", e);
+    }
+
+    // 3. Fallback: check localStorage for offline profiles
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("bongsho_profile_")) {
+          const rawJson = localStorage.getItem(key);
+          if (rawJson) {
+            const profile = JSON.parse(rawJson) as UserProfile;
+            if (profile.username && profile.username.toLowerCase() === cleanUser) {
+              loginUsername(profile.username);
+              return { success: true, username: profile.username };
+            }
+            if (inputDigits.length >= 6 && profile.phone) {
+              const pDigits = profile.phone.replace(/\D/g, "");
+              if (
+                pDigits === inputDigits ||
+                pDigits.endsWith(inputDigits) ||
+                inputDigits.endsWith(pDigits)
+              ) {
+                loginUsername(profile.username);
+                return { success: true, username: profile.username };
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {}
+
+    return { success: false, error: "not_found" };
+  };
+
+  const checkAccountExists = async (
+    username: string,
+    phone?: string
+  ): Promise<{ usernameExists: boolean; phoneExists: boolean }> => {
+    const cleanUser = username.trim().toLowerCase().replace(/^@/, "");
+    const inputDigits = phone ? phone.replace(/\D/g, "") : "";
+
+    let usernameExists = false;
+    let phoneExists = false;
+
+    try {
+      const userDoc = await getDoc(doc(db, "user_profiles", cleanUser));
+      if (userDoc.exists()) {
+        usernameExists = true;
+      }
+
+      if (inputDigits && inputDigits.length >= 6) {
+        const snap = await getDocs(collection(db, "user_profiles"));
+        for (const d of snap.docs) {
+          const u = d.data() as UserProfile;
+          if (u.phone) {
+            const uDigits = u.phone.replace(/\D/g, "");
+            if (
+              uDigits === inputDigits ||
+              uDigits.endsWith(inputDigits) ||
+              inputDigits.endsWith(uDigits)
+            ) {
+              phoneExists = true;
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Error checking account exists:", e);
+    }
+
+    return { usernameExists, phoneExists };
+  };
+
   const logoutUsername = () => {
     setCurrentUsername(null);
     setCurrentUserProfile(null);
@@ -414,6 +542,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         currentUsername,
         currentUserProfile,
         loginUsername,
+        loginByIdentifier,
+        checkAccountExists,
         logoutUsername,
         saveUserProfile,
         selectedMember,
