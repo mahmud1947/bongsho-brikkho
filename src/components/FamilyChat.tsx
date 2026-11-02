@@ -21,6 +21,7 @@ import {
   Trash2,
   User,
   Users,
+  Video,
   X,
   ZoomIn,
 } from "lucide-react";
@@ -44,6 +45,7 @@ import VoiceRecorder from "@/components/VoiceRecorder";
 import VoiceMessagePlayer from "@/components/VoiceMessagePlayer";
 import GroupInfoModal from "@/components/GroupInfoModal";
 import OnlineMembersModal from "@/components/OnlineMembersModal";
+import FamilyGroupCallModal from "@/components/FamilyGroupCallModal";
 
 interface FamilyChatProps {
   messages: FamilyChatMessage[];
@@ -169,6 +171,7 @@ export default function FamilyChat({
   // Group Info Modal & Online Modal states
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
   const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
+  const [isGroupCallModalOpen, setIsGroupCallModalOpen] = useState(false);
 
   // Mention system states
   const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
@@ -822,6 +825,29 @@ export default function FamilyChat({
         currentUserProfile?.nameBn ||
         currentUsername;
 
+  const handleStartGroupCall = async () => {
+    setIsGroupCallModalOpen(true);
+    if (currentUsername) {
+      const authorName = currentDisplayName || currentUsername;
+      const callMsg: FamilyChatMessage = {
+        id: `chat-call-${Date.now()}`,
+        text:
+          lang === "bn"
+            ? `📞 ${authorName} একটি ফ্যামিলি গ্রুপ কল শুরু করেছেন! যুক্ত হতে নিচের বাটনে ট্যাপ করুন।`
+            : `📞 ${authorName} started a Family Group Call! Tap below to join.`,
+        authorUsername: currentUsername,
+        authorName,
+        authorNameBn: currentUserProfile?.nameBn,
+        authorNameEn: currentUserProfile?.nameEn,
+        authorCountry:
+          currentUserProfile?.countryBn || currentUserProfile?.countryEn,
+        authorPhotoUrl: currentUserProfile?.photoUrl || undefined,
+        createdAt: new Date().toISOString(),
+      };
+      await onSend(callMsg);
+    }
+  };
+
   // Render message text with highlighted, clickable @mentions
   const renderMessageContent = (messageText: string, isMine: boolean) => {
     const parts = messageText.split(/(@[a-zA-Z0-9_]+)/g);
@@ -916,6 +942,21 @@ export default function FamilyChat({
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Family Group Call Button */}
+          <button
+            type="button"
+            onClick={handleStartGroupCall}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-xs cursor-pointer transition border border-emerald-500/70"
+            title={
+              lang === "bn"
+                ? "ফ্যামিলি গ্রুপ মিটিং (অডিও ও ভিডিও কল)"
+                : "Family Group Call (Audio & Video)"
+            }
+          >
+            <Video className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">{lang === "bn" ? "গ্রুপ কল" : "Call"}</span>
+          </button>
+
           {pinnedMessages.length > 0 && (
             <button
               type="button"
@@ -1478,6 +1519,30 @@ export default function FamilyChat({
                             {renderMessageContent(message.text, isMine)}
                           </p>
                         )}
+
+                        {/* Call Invitation Banner */}
+                        {message.text &&
+                          (message.text.includes("গ্রুপ কল") ||
+                            message.text.includes("Group Call")) && (
+                            <div className="mt-2 pt-2 border-t border-black/15 flex items-center justify-between gap-2">
+                              <span
+                                className={`text-[11px] font-bold flex items-center gap-1.5 ${
+                                  isMine ? "text-emerald-300" : "text-emerald-700"
+                                }`}
+                              >
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                {lang === "bn" ? "লাইভ মিটিং রুম" : "Live Room"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setIsGroupCallModalOpen(true)}
+                                className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                                <span>{lang === "bn" ? "কলে যোগ দিন" : "Join Call"}</span>
+                              </button>
+                            </div>
+                          )}
 
                         {/* Timestamp + WhatsApp Ticks */}
                         <div
@@ -2174,6 +2239,16 @@ export default function FamilyChat({
           setIsOnlineModalOpen(false);
           onSelectMemberProfile?.(m);
         }}
+      />
+
+      {/* FAMILY GROUP CALL MODAL (AUDIO & VIDEO) */}
+      <FamilyGroupCallModal
+        isOpen={isGroupCallModalOpen}
+        onClose={() => setIsGroupCallModalOpen(false)}
+        roomName="Bongsho_Family_Group_Room_2026"
+        userName={currentDisplayName || currentUsername || "Family Member"}
+        userPhoto={currentUserProfile?.photoUrl}
+        lang={lang}
       />
     </section>
   );
