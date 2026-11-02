@@ -1,23 +1,12 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  UserPlus,
-  MapPin,
-  Search,
-  LayoutList,
-  Network,
-  Globe,
-  Phone,
-  Scan,
-  MessageSquare,
-  Share2,
-  Info,
-} from "lucide-react";
-import { FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
-import CountryFlag from "@/components/CountryFlag";
+import { UserPlus } from "lucide-react";
+import { FamilyBranch, FamilyMember, Language } from "@/types/family";
+import TreeToolbar from "./tree/TreeToolbar";
+import TreeBranchBar from "./tree/TreeBranchBar";
+import TreeNodeCanvas from "./tree/TreeNodeCanvas";
+import TreeNodeMobile from "./tree/TreeNodeMobile";
 
 interface FamilyTreeViewProps {
   members: FamilyMember[];
@@ -40,16 +29,6 @@ export default function FamilyTreeView({
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"canvas" | "mobile-tree">("canvas");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
-
-  const formatWhatsappUrl = (phoneOrWa?: string) => {
-    if (!phoneOrWa) return "";
-    let digits = phoneOrWa.replace(/\D/g, "");
-    if (!digits) return "";
-    if (digits.startsWith("01") && digits.length === 11) {
-      digits = "88" + digits;
-    }
-    return `https://wa.me/${digits}`;
-  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -117,7 +96,7 @@ export default function FamilyTreeView({
     return list;
   }, [rootMembers, childrenMap, members]);
 
-  // 1. Initial State: Only G1 & G2 open initially (all generation >= 2 with children start collapsed)
+  // Initial State: Only G1 & G2 open initially (all generation >= 2 with children start collapsed)
   const [hasInitializedCollapse, setHasInitializedCollapse] = useState<boolean>(false);
   useEffect(() => {
     if (members.length > 0 && !hasInitializedCollapse) {
@@ -134,7 +113,7 @@ export default function FamilyTreeView({
     }
   }, [members, rootMembers, childrenMap, hasInitializedCollapse]);
 
-  // 2. Accordion expansion: Tapping a child expands only its family down and collapses sibling branches
+  // Accordion expansion: Tapping a child expands only its family down and collapses sibling branches
   const handleNodeTap = (member: FamilyMember, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
@@ -189,7 +168,7 @@ export default function FamilyTreeView({
     }
   };
 
-  // 3. Branch Quick-Select: Open everyone in a selected branch in a single glance
+  // Branch Quick-Select: Open everyone in a selected branch in a single glance
   const expandBranch = (g2MemberId: string) => {
     const newCollapsed: Record<string, boolean> = {};
 
@@ -210,10 +189,8 @@ export default function FamilyTreeView({
       const hasKids = (childrenMap[m.id] || []).length > 0;
       if (hasKids) {
         if (branchDescendantIds.has(m.id) || rootSet.has(m.id)) {
-          // Keep root and all members in this selected branch EXPANDED
           delete newCollapsed[m.id];
         } else {
-          // Collapse all other branches
           newCollapsed[m.id] = true;
         }
       }
@@ -242,11 +219,6 @@ export default function FamilyTreeView({
     setCollapsedIds(initial);
     setSelectedBranchId("all");
     handleFitScreen();
-  };
-
-  const toggleCollapse = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCollapsedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const expandAll = () => setCollapsedIds({});
@@ -419,389 +391,6 @@ export default function FamilyTreeView({
     }, 100);
   };
 
-  const getBranchStyle = (branchId: string) => {
-    switch (branchId) {
-      case "root":
-        return {
-          border: "border-amber-500",
-          left: "border-l-amber-500",
-          header: "bg-emerald-950 text-amber-300",
-        };
-      case "child-1":
-      case "boro-taraf":
-        return {
-          border: "border-emerald-600",
-          left: "border-l-emerald-600",
-          header: "bg-emerald-800 text-white",
-        };
-      case "child-2":
-      case "mejo-taraf":
-        return {
-          border: "border-amber-600",
-          left: "border-l-amber-600",
-          header: "bg-amber-700 text-white",
-        };
-      case "child-3":
-      case "choto-taraf":
-        return {
-          border: "border-sky-600",
-          left: "border-l-sky-600",
-          header: "bg-sky-800 text-white",
-        };
-      case "child-4":
-        return {
-          border: "border-purple-600",
-          left: "border-l-purple-600",
-          header: "bg-purple-800 text-white",
-        };
-      case "child-5":
-        return {
-          border: "border-rose-600",
-          left: "border-l-rose-600",
-          header: "bg-rose-800 text-white",
-        };
-      default:
-        return {
-          border: "border-teal-600",
-          left: "border-l-teal-600",
-          header: "bg-teal-800 text-white",
-        };
-    }
-  };
-
-  // Mobile / List Mode Card
-  const renderMobileNode = (member: FamilyMember): React.ReactNode => {
-    const visibleChildren = childrenMap[member.id] || [];
-    const hasChildren = visibleChildren.length > 0;
-    const isCollapsed = !!collapsedIds[member.id];
-    const style = getBranchStyle(member.branchId);
-
-    return (
-      <div key={member.id} className="w-full">
-        <div
-          id={`tree-node-${member.id}`}
-          onClick={(e) => handleNodeTap(member, e)}
-          className={`rounded-2xl bg-white border border-stone-200 border-l-4 ${style.left} p-3.5 shadow-sm hover:shadow-md transition cursor-pointer ${
-            highlightedId === member.id ? "ring-2 ring-amber-400" : ""
-          }`}
-        >
-          <div className="flex items-start justify-between gap-2.5">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              {/* Gen & Status Header */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-950 text-amber-300">
-                  G{member.generation}
-                </span>
-                {!member.isAlive && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-700 border border-stone-300">
-                    {lang === "bn" ? "প্রয়াত" : "Late"}
-                  </span>
-                )}
-                {member.bloodGroup && member.bloodGroup !== "Unknown" && (
-                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700">
-                    🩸 {member.bloodGroup}
-                  </span>
-                )}
-              </div>
-
-              {/* Name */}
-              <div>
-                <h3
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectMember(member);
-                  }}
-                  className="font-bold text-stone-900 text-base leading-tight truncate hover:text-emerald-700 cursor-pointer"
-                  title={lang === "bn" ? "প্রোফাইল দেখতে ক্লিক করুন" : "Click to view profile"}
-                >
-                  {lang === "bn" ? member.nameBn : member.nameEn}
-                </h3>
-              </div>
-
-              {/* Country, Present Address & Phone */}
-              <div className="space-y-1 pt-1 text-xs text-stone-600">
-                <div className="flex items-center gap-1.5 text-stone-700 truncate">
-                  <CountryFlag
-                    country={member.countryBn || member.countryEn}
-                    className="w-4.5 h-3"
-                  />
-                  <span className="font-semibold truncate">
-                    {lang === "bn" ? (member.countryBn || "বাংলাদেশ") : (member.countryEn || "Bangladesh")}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 truncate">
-                  <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                  <span className="truncate">
-                    {lang === "bn" ? member.locationBn : member.locationEn}
-                  </span>
-                </div>
-
-                {/* Contacts: Phone, WhatsApp, Social */}
-                <div className="flex items-center gap-2 pt-0.5 flex-wrap">
-                  {member.phone && (
-                    <a
-                      href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 text-emerald-800 font-bold hover:underline"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                      <span>{member.phone}</span>
-                    </a>
-                  )}
-
-                  {(member.whatsapp || member.phone) && (
-                    <a
-                      href={formatWhatsappUrl(member.whatsapp || member.phone)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-[11px]"
-                      title="WhatsApp Chat"
-                    >
-                      <MessageSquare className="w-3 h-3 text-emerald-700" />
-                      <span>WhatsApp</span>
-                    </a>
-                  )}
-
-                  {member.socialLink && (
-                    <a
-                      href={formatSocialUrl(member.socialLink)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px]"
-                      title="Social Link"
-                    >
-                      <Share2 className="w-3 h-3 text-blue-600" />
-                      <span>Social</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1.5 flex-shrink-0 pt-0.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddChildToMember(member);
-                }}
-                className="p-2 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold hover:bg-amber-100 shadow-sm"
-                title={lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
-              >
-                <UserPlus className="w-4 h-4" />
-              </button>
-              {hasChildren && (
-                <button
-                  type="button"
-                  onClick={(e) => handleNodeTap(member, e)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold hover:bg-emerald-800 shadow-sm"
-                >
-                  <span>{visibleChildren.length}</span>
-                  {isCollapsed ? (
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {hasChildren && !isCollapsed && (
-          <div className="mt-2 space-y-2 pl-3 sm:pl-4 border-l-2 border-emerald-700/35 ml-2.5 sm:ml-3">
-            {visibleChildren.map((c) => renderMobileNode(c))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Canvas / Tree Node Card (Single unified compact card optimized for both mobile & desktop)
-  const renderCanvasNode = (member: FamilyMember): React.ReactNode => {
-    const visibleChildren = childrenMap[member.id] || [];
-    const hasChildren = visibleChildren.length > 0;
-    const isCollapsed = !!collapsedIds[member.id];
-    const style = getBranchStyle(member.branchId);
-
-    const displayName = lang === "bn" ? member.nameBn || member.nameEn : member.nameEn || member.nameBn;
-    const displayLocation =
-      lang === "bn" ? member.locationBn || member.locationEn : member.locationEn || member.locationBn;
-    const genderLetter = member.gender === "female" ? "F" : "M";
-
-    return (
-      <div key={member.id} className="flex flex-col items-center relative px-1">
-        <div
-          id={`tree-node-${member.id}`}
-          onClick={(e) => handleNodeTap(member, e)}
-          className={`w-44 sm:w-48 rounded-xl bg-white border-2 ${style.border} shadow-sm hover:shadow-lg transition cursor-pointer relative ${
-            highlightedId === member.id ? "ring-2 ring-amber-400" : ""
-          }`}
-        >
-          {/* Header: G{generation} • M/F (Left) | Late (if deceased) + Flag (Right) */}
-          <div className={`px-2 py-1 rounded-t-[10px] flex items-center justify-between text-[10px] font-bold ${style.header}`}>
-            <div className="flex items-center gap-1">
-              <span>G{member.generation}</span>
-              <span>•</span>
-              <span>{genderLetter}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              {!member.isAlive && (
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-black/30 text-stone-100 font-semibold leading-none">
-                  Late
-                </span>
-              )}
-              <CountryFlag
-                country={member.countryBn || member.countryEn}
-                title={member.countryBn || member.countryEn || "Bangladesh"}
-                className="w-5 h-3.5 shadow-xs"
-              />
-            </div>
-          </div>
-
-          <div className="p-2 space-y-1">
-            {/* Name + Profile Info */}
-            <div>
-              <div className="flex items-center justify-between gap-1">
-                <h3
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectMember(member);
-                  }}
-                  className="font-bold text-stone-900 text-xs sm:text-sm leading-tight truncate hover:text-emerald-700 cursor-pointer flex-1"
-                  title={lang === "bn" ? "প্রোফাইল দেখতে ক্লিক করুন" : "Click to view profile"}
-                >
-                  {displayName}
-                </h3>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectMember(member);
-                  }}
-                  className="p-0.5 rounded text-stone-400 hover:text-emerald-800 hover:bg-emerald-50 transition cursor-pointer flex-shrink-0"
-                  title={lang === "bn" ? "প্রোফাইল দেখুন" : "View Profile"}
-                >
-                  <Info className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-
-            {/* Address (Country text omitted since flag is in header) */}
-            {displayLocation && (
-              <p className="truncate flex items-center gap-1 text-[10px] text-stone-600">
-                <MapPin className="w-2.5 h-2.5 text-amber-600 flex-shrink-0" />
-                <span className="truncate">{displayLocation}</span>
-              </p>
-            )}
-
-            {/* Phone & Contact Icons & Add Child */}
-            <div className="flex items-center justify-between gap-1 pt-1 border-t border-stone-100 text-[10px]">
-              {member.phone ? (
-                <a
-                  href={`tel:${member.phone.replace(/\s+/g, "")}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="truncate flex items-center gap-1 text-emerald-800 font-bold hover:underline"
-                  title={member.phone}
-                >
-                  <Phone className="w-2.5 h-2.5 text-emerald-700 flex-shrink-0" />
-                  <span className="truncate">{member.phone}</span>
-                </a>
-              ) : (
-                <span className="text-stone-300 text-[9px] italic truncate">
-                  {lang === "bn" ? "ফোন নেই" : "No phone"}
-                </span>
-              )}
-
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {formatWhatsappUrl(member.whatsapp || member.phone) && (
-                  <a
-                    href={formatWhatsappUrl(member.whatsapp || member.phone)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-green-600 hover:text-green-700 p-0.5"
-                    title="WhatsApp"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                  </a>
-                )}
-                {member.socialLink && (
-                  <a
-                    href={formatSocialUrl(member.socialLink)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-blue-600 hover:text-blue-700 p-0.5"
-                    title="Social Link"
-                  >
-                    <Share2 className="w-3 h-3" />
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddChildToMember(member);
-                  }}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[9px] font-bold cursor-pointer ml-0.5"
-                  title={lang === "bn" ? "সন্তান অ্যাড" : "Add Child"}
-                >
-                  <UserPlus className="w-2.5 h-2.5" />
-                  <span>+</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {hasChildren && (
-            <button
-              type="button"
-              onClick={(e) => handleNodeTap(member, e)}
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-900 text-amber-300 text-[10px] font-bold shadow-md cursor-pointer hover:bg-emerald-800 active:scale-95 transition"
-              title={isCollapsed ? (lang === "bn" ? "পরিবার নিচে দেখুন" : "Expand family") : (lang === "bn" ? "পরিবার বন্ধ করুন" : "Collapse")}
-            >
-              <span>{visibleChildren.length}</span>
-              {isCollapsed ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronRight className="w-2.5 h-2.5" />}
-            </button>
-          )}
-          </div>
-
-          {hasChildren && !isCollapsed && (
-            <div className="flex flex-col items-center">
-              <div className="w-0.5 h-5 bg-emerald-700/60" />
-              <div className="flex items-start justify-center relative">
-                {visibleChildren.map((child, idx) => {
-                  const isOnly = visibleChildren.length === 1;
-                  return (
-                    <div key={child.id} className="flex flex-col items-center relative">
-                      {!isOnly && (
-                        <div
-                          className={`h-0.5 bg-emerald-700/60 absolute top-0 ${
-                            idx === 0
-                              ? "left-1/2 right-0"
-                              : idx === visibleChildren.length - 1
-                              ? "left-0 right-1/2"
-                              : "left-0 right-0"
-                          }`}
-                        />
-                      )}
-                      <div className="w-0.5 h-4 bg-emerald-700/60" />
-                      {renderCanvasNode(child)}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-  };
-
   if (members.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center space-y-4">
@@ -818,152 +407,49 @@ export default function FamilyTreeView({
 
   return (
     <div className="space-y-3">
-      {/* Clean Compact Toolbar - All in One Single Line on Mobile & Desktop */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-2 sm:p-2.5 shadow-sm flex items-center gap-1.5 sm:gap-2.5 w-full">
-        {/* Left: View Switcher (Chart / List) */}
-        <div className="flex bg-stone-100 p-0.5 sm:p-1 rounded-xl flex-shrink-0">
-          <button
-            onClick={() => setViewMode("canvas")}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
-              viewMode === "canvas" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
-            }`}
-            title={lang === "bn" ? "চার্ট ভিউ" : "Chart View"}
-          >
-            <Network className="w-3.5 h-3.5" />
-            <span>{lang === "bn" ? "চার্ট" : "Chart"}</span>
-          </button>
-          <button
-            onClick={() => setViewMode("mobile-tree")}
-            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition ${
-              viewMode === "mobile-tree" ? "bg-emerald-900 text-amber-300 shadow-sm" : "text-stone-600 hover:text-stone-900"
-            }`}
-            title={lang === "bn" ? "লিস্ট ভিউ" : "List View"}
-          >
-            <LayoutList className="w-3.5 h-3.5" />
-            <span>{lang === "bn" ? "লিস্ট" : "List"}</span>
-          </button>
-        </div>
+      {/* Clean Compact Toolbar */}
+      <TreeToolbar
+        lang={lang}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        matchingMembers={matchingMembers}
+        onSelectSearchMember={focusMember}
+        onFitScreen={handleFitScreen}
+      />
 
-        {/* Middle: Search Input */}
-        <div className="relative flex-1 min-w-0">
-          <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={lang === "bn" ? "সার্চ..." : "Search..."}
-            className="w-full pl-7 sm:pl-8 pr-2.5 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 bg-stone-50/50 focus:bg-white transition"
-          />
-          {matchingMembers.length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-stone-200 z-30 max-h-48 overflow-y-auto divide-y divide-stone-100">
-              {matchingMembers.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => focusMember(m)}
-                  className="w-full text-left px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-stone-800 truncate"
-                >
-                  {lang === "bn" ? m.nameBn : m.nameEn}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Fit Screen Button */}
-        {viewMode === "canvas" && (
-          <button
-            onClick={handleFitScreen}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-900 text-amber-300 text-xs font-bold cursor-pointer hover:bg-emerald-800 shadow-sm flex-shrink-0"
-            title={lang === "bn" ? "স্ক্রিনে ফিট করুন" : "Fit to screen"}
-          >
-            <Scan className="w-3.5 h-3.5" />
-            <span>{lang === "bn" ? "ফিট" : "Fit"}</span>
-          </button>
-        )}
-      </div>
-
-      {/* Branch Quick-Select Pill Bar (Requirement 3: নির্দিষ্ট শাখা সিলেক্ট করে এক পলকেই সেই শাখার সবাই দেখতে পাবেন) */}
-      {g2Members.length > 0 && (
-        <div className="bg-white rounded-xl border border-stone-200 px-2.5 py-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1 text-stone-500 text-xs font-bold flex-shrink-0 pr-1.5 border-r border-stone-200">
-            <span className="text-emerald-700">🌿</span>
-            <span>{lang === "bn" ? "শাখা" : "Branch"}</span>
-          </div>
-
-          {/* 1. All Button (Fully opens all branches) */}
-          <button
-            type="button"
-            onClick={() => {
-              expandAll();
-              setSelectedBranchId("full-tree");
-              handleFitScreen();
-            }}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
-              selectedBranchId === "full-tree"
-                ? "bg-emerald-900 text-amber-300 shadow-sm"
-                : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
-            }`}
-            title={lang === "bn" ? "সব শাখা একসাথে সম্পূর্ণ দেখুন" : "View all branches together"}
-          >
-            {lang === "bn" ? "সব (All)" : "All"}
-          </button>
-
-          {/* 2. G1 & G2 Overview Button */}
-          <button
-            type="button"
-            onClick={resetToOverview}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
-              selectedBranchId === "all"
-                ? "bg-emerald-900 text-amber-300 shadow-sm"
-                : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
-            }`}
-            title={lang === "bn" ? "শুধু মূল ও প্রথম প্রজন্ম দেখুন" : "View G1 & G2 overview"}
-          >
-            {lang === "bn" ? "G1 ও G2" : "G1 & G2"}
-          </button>
-
-          {/* Individual G2 Branch Buttons */}
-          {g2Members.map((g2) => {
-            const isSelected = selectedBranchId === g2.id;
-            const branchStyle = getBranchStyle(g2.branchId);
-            const branchName = lang === "bn" ? g2.nameBn : g2.nameEn;
-            const childCount = (childrenMap[g2.id] || []).length;
-
-            return (
-              <button
-                key={g2.id}
-                type="button"
-                onClick={() => expandBranch(g2.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition flex-shrink-0 cursor-pointer ${
-                  isSelected
-                    ? "bg-amber-400 text-emerald-950 shadow-sm ring-2 ring-emerald-900"
-                    : "bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200/60"
-                }`}
-                title={lang === "bn" ? `${branchName}-এর পরিবার দেখুন` : `View ${branchName}'s Family`}
-              >
-                <span className={`w-2 h-2 rounded-full ${branchStyle.header.split(" ")[0] || "bg-emerald-600"}`} />
-                <span>{branchName}</span>
-                {childCount > 0 && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isSelected
-                        ? "bg-emerald-950 text-amber-300 font-bold"
-                        : "bg-stone-200 text-stone-700"
-                    }`}
-                  >
-                    {childCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Branch Quick-Select Pill Bar */}
+      <TreeBranchBar
+        lang={lang}
+        g2Members={g2Members}
+        childrenMap={childrenMap}
+        selectedBranchId={selectedBranchId}
+        onExpandAll={() => {
+          expandAll();
+          setSelectedBranchId("full-tree");
+          handleFitScreen();
+        }}
+        onResetToOverview={resetToOverview}
+        onExpandBranch={expandBranch}
+      />
 
       {/* Viewport: Mobile-tree (List) or Visual Canvas (Chart) */}
       {viewMode === "mobile-tree" ? (
         <div className="space-y-2.5">
-          {rootMembers.map((root) => renderMobileNode(root))}
+          {rootMembers.map((root) => (
+            <TreeNodeMobile
+              key={root.id}
+              member={root}
+              childrenMap={childrenMap}
+              collapsedIds={collapsedIds}
+              highlightedId={highlightedId}
+              lang={lang}
+              onNodeTap={handleNodeTap}
+              onSelectMember={onSelectMember}
+              onAddChildToMember={onAddChildToMember}
+            />
+          ))}
         </div>
       ) : (
         <div className="relative">
@@ -990,13 +476,25 @@ export default function FamilyTreeView({
                   ref={contentRef}
                   className="flex items-start gap-4 sm:gap-6 pb-12 pt-2"
                 >
-                  {rootMembers.map((root) => renderCanvasNode(root))}
+                  {rootMembers.map((root) => (
+                    <TreeNodeCanvas
+                      key={root.id}
+                      member={root}
+                      childrenMap={childrenMap}
+                      collapsedIds={collapsedIds}
+                      highlightedId={highlightedId}
+                      lang={lang}
+                      onNodeTap={handleNodeTap}
+                      onSelectMember={onSelectMember}
+                      onAddChildToMember={onAddChildToMember}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Floating Zoom Level Pill (Visible while pinching or zooming) */}
+          {/* Floating Zoom Level Pill */}
           {showZoomBadge && (
             <div className="absolute bottom-4 right-4 z-20 pointer-events-none bg-stone-900/85 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-full text-xs font-black shadow-xl border border-white/20 transition-opacity">
               {Math.round(zoom * 100)}%

@@ -13,7 +13,6 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
-  getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { initialBranches } from "@/data/initialFamilyData";
@@ -29,18 +28,20 @@ import {
   UserProfile,
   UserPresence,
 } from "@/types/family";
+import {
+  UpcomingBirthdayItem,
+  calculateBirthdays,
+  checkAndTriggerBirthdayNotifications,
+} from "@/lib/birthdayUtils";
+import { lookupAccountByIdentifier, checkIfAccountExists } from "@/lib/authService";
+import { usePresenceTracker } from "@/hooks/usePresenceTracker";
+
+export type { UpcomingBirthdayItem };
 
 const USERNAME_KEY = "bongsho_current_username";
 const ADMIN_PASSWORD = "Mahmud2026";
 const ADMIN_STORAGE_KEY = "bongsho_is_admin";
 const LANG_STORAGE_KEY = "bongsho_preferred_language";
-
-export interface UpcomingBirthdayItem {
-  member: FamilyMember;
-  daysRemaining: number;
-  birthDateFormatted: string;
-  calculatedAge?: number;
-}
 
 const defaultGroupSettings: GroupSettings = {
   groupNameBn: "Family Chat",
@@ -146,17 +147,17 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>([]);
   const [unseenChatCount, setUnseenChatCount] = useState<number>(0);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const currentUsernameRef = useRef<string | null>(null);
-
-  // Presence states
-  const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
-  const [onlineCount, setOnlineCount] = useState<number>(1);
 
   // Group Settings state
   const [groupSettings, setGroupSettings] = useState<GroupSettings>(defaultGroupSettings);
 
   // Typing status state
   const [typingUsers, setTypingUsers] = useState<Record<string, { displayName: string; timestamp: number }>>({});
+
+  // Presence hook
+  const { onlineUsers, onlineCount } = usePresenceTracker(currentUsername, currentUserProfile);
 
   useEffect(() => {
     currentUsernameRef.current = currentUsername;
@@ -423,38 +424,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Subscribe to Real-Time Presence
-    const unsubPresence = onSnapshot(collection(db, "user_presence"), (snap) => {
-      const now = Date.now();
-      const list: UserPresence[] = [];
-      const seen = new Set<string>();
-
-      snap.docs.forEach((d) => {
-        const data = d.data() as UserPresence;
-        if (!data.username || seen.has(data.username)) return;
-        seen.add(data.username);
-
-        const lastSeenTime = new Date(data.lastSeen).getTime();
-        const isRecent = !isNaN(lastSeenTime) && now - lastSeenTime < 80000;
-        if (data.isOnline && isRecent) {
-          list.push(data);
-        }
-      });
-
-      const me = currentUsernameRef.current;
-      if (me && !seen.has(me)) {
-        list.push({
-          username: me,
-          displayName: me,
-          lastSeen: new Date().toISOString(),
-          isOnline: true,
-        });
-      }
-
-      setOnlineUsers(list);
-      setOnlineCount(Math.max(1, list.length));
-    });
-
     return () => {
       unsubMembers();
       unsubTimeline();
@@ -463,11 +432,8 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       unsubChatMessages();
       unsubGroup();
       unsubTyping();
-      unsubPresence();
     };
   }, []);
-
-  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
   // Sync personal profile when username changes (completely separate from tree members)
   useEffect(() => {
@@ -495,68 +461,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsub();
   }, [currentUsername]);
-
-  // Presence Heartbeat
-  const updatePresenceHeartbeat = useCallback(
-    async (isOnline: boolean = true) => {
-      const user = currentUsernameRef.current;
-      if (!user) return;
-      try {
-        const profile = currentUserProfile;
-        const name = profile?.nameBn || profile?.nameEn || `@${user}`;
-        const isMobile =
-          typeof navigator !== "undefined" &&
-          /android|iphone|ipad|mobile/i.test(navigator.userAgent);
-        const presenceData: UserPresence = {
-          username: user,
-          displayName: name,
-          photoUrl: profile?.photoUrl || "",
-          lastSeen: new Date().toISOString(),
-          isOnline,
-          platform: isMobile ? "mobile" : "desktop",
-        };
-        await setDoc(doc(db, "user_presence", user), cleanData(presenceData), { merge: true });
-      } catch (err) {
-        // silently catch offline/presence network error
-      }
-    },
-    [currentUserProfile]
-  );
-
-  useEffect(() => {
-    if (!currentUsername) return;
-
-    updatePresenceHeartbeat(true);
-
-    const interval = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        updatePresenceHeartbeat(true);
-      }
-    }, 32000);
-
-    const handleVisibilityChange = () => {
-      if (typeof document !== "undefined") {
-        if (document.visibilityState === "visible") {
-          updatePresenceHeartbeat(true);
-        } else {
-          updatePresenceHeartbeat(false);
-        }
-      }
-    };
-
-    const handleBeforeUnload = () => {
-      updatePresenceHeartbeat(false);
-    };
-
-    window.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [currentUsername, updatePresenceHeartbeat]);
 
   // Group settings update handler
   const updateGroupSettings = async (newSettings: Partial<GroupSettings>) => {
@@ -615,114 +519,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
   // Birthday Calculation Hook
   const { todayBirthdays, upcomingBirthdays } = useMemo(() => {
-    const todayList: Array<{ member: FamilyMember; age?: number }> = [];
-    const upcomingList: UpcomingBirthdayItem[] = [];
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth(); // 0-indexed
-    const currentDay = now.getDate();
-
-    for (const m of members) {
-      if (m.isAlive === false) continue;
-      if (!m.birthYear || m.birthYear === "জানা নেই" || m.birthYear === "unknown") continue;
-
-      const parts = m.birthYear
-        .split("-")
-        .map((p) => parseInt(p.trim(), 10))
-        .filter((n) => !isNaN(n));
-      let y: number | undefined;
-      let month: number | undefined;
-      let day: number | undefined;
-
-      if (parts.length >= 3) {
-        if (parts[0] > 1900) {
-          y = parts[0];
-          month = parts[1];
-          day = parts[2];
-        } else {
-          y = parts[2];
-          month = parts[1];
-          day = parts[0];
-        }
-      } else {
-        continue;
-      }
-
-      if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) continue;
-
-      const calculatedAge = y ? currentYear - y : undefined;
-
-      // Check if today
-      if (month - 1 === currentMonth && day === currentDay) {
-        todayList.push({
-          member: m,
-          age: calculatedAge,
-        });
-        upcomingList.push({
-          member: m,
-          daysRemaining: 0,
-          birthDateFormatted: `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}`,
-          calculatedAge,
-        });
-      } else {
-        let nextBday = new Date(currentYear, month - 1, day);
-        if (nextBday < now) {
-          nextBday = new Date(currentYear + 1, month - 1, day);
-        }
-        const diffTime = nextBday.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays >= 1 && diffDays <= 30) {
-          const nextAge = y ? nextBday.getFullYear() - y : undefined;
-          upcomingList.push({
-            member: m,
-            daysRemaining: diffDays,
-            birthDateFormatted: `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}`,
-            calculatedAge: nextAge,
-          });
-        }
-      }
-    }
-
-    upcomingList.sort((a, b) => a.daysRemaining - b.daysRemaining);
-
-    return { todayBirthdays: todayList, upcomingBirthdays: upcomingList };
+    return calculateBirthdays(members);
   }, [members]);
 
   // Birthday Notification Check once per day
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const notifKey = `bongsho_bday_notif_${todayStr}`;
-    if (localStorage.getItem(notifKey)) return;
-
-    if (todayBirthdays.length > 0) {
-      const p = todayBirthdays[0];
-      const name = lang === "bn" ? p.member.nameBn : p.member.nameEn;
-      showBrowserNotification(`🎂 শুভ জন্মদিন: ${name}!`, {
-        body:
-          lang === "bn"
-            ? `আজ ${name}-এর শুভ জন্মদিন! পারিবারিক চ্যাটে শুভেচ্ছা জানান।`
-            : `Today is ${name}'s birthday! Wish them in the Family Chat.`,
-        tag: `bongsho-bday-${todayStr}`,
-      });
-      localStorage.setItem(notifKey, "true");
-    } else {
-      const tomorrowBday = upcomingBirthdays.find((b) => b.daysRemaining === 1);
-      if (tomorrowBday) {
-        const name =
-          lang === "bn" ? tomorrowBday.member.nameBn : tomorrowBday.member.nameEn;
-        showBrowserNotification(`🎉 আগামীকাল জন্মদিন: ${name}!`, {
-          body:
-            lang === "bn"
-              ? `আগামীকাল ${name}-এর শুভ জন্মদিন! প্রস্তুতি নিন।`
-              : `Tomorrow is ${name}'s birthday! Get ready to wish them.`,
-          tag: `bongsho-bday-advance-${todayStr}`,
-        });
-        localStorage.setItem(notifKey, "true");
-      }
-    }
+    checkAndTriggerBirthdayNotifications(todayBirthdays, upcomingBirthdays, lang);
   }, [todayBirthdays, upcomingBirthdays, lang]);
 
   const saveUserProfile = async (profile: UserProfile) => {
@@ -748,118 +550,18 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const loginByIdentifier = async (
     identifier: string
   ): Promise<{ success: boolean; error?: string; username?: string }> => {
-    const raw = identifier.trim();
-    if (!raw) {
-      return { success: false, error: "empty_identifier" };
+    const res = await lookupAccountByIdentifier(identifier);
+    if (res.success && res.username) {
+      loginUsername(res.username);
     }
-
-    const cleanUser = raw.toLowerCase().replace(/^@/, "");
-    const inputDigits = raw.replace(/\D/g, "");
-
-    if (inputDigits.length >= 6) {
-      try {
-        const snap = await getDocs(collection(db, "user_profiles"));
-        const matchedDoc = snap.docs.find((d) => {
-          const u = d.data() as UserProfile;
-          if (!u.phone) return false;
-          const uDigits = u.phone.replace(/\D/g, "");
-          if (!uDigits) return false;
-          return (
-            uDigits === inputDigits ||
-            uDigits.endsWith(inputDigits) ||
-            inputDigits.endsWith(uDigits)
-          );
-        });
-
-        if (matchedDoc) {
-          const user = matchedDoc.data() as UserProfile;
-          loginUsername(user.username);
-          return { success: true, username: user.username };
-        }
-      } catch (e) {
-        console.warn("Error querying user_profiles by phone:", e);
-      }
-    }
-
-    try {
-      const docRef = doc(db, "user_profiles", cleanUser);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        loginUsername(cleanUser);
-        return { success: true, username: cleanUser };
-      }
-    } catch (e) {
-      console.warn("Error querying user_profiles by username:", e);
-    }
-
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("bongsho_profile_")) {
-          const rawJson = localStorage.getItem(key);
-          if (rawJson) {
-            const profile = JSON.parse(rawJson) as UserProfile;
-            if (profile.username && profile.username.toLowerCase() === cleanUser) {
-              loginUsername(profile.username);
-              return { success: true, username: profile.username };
-            }
-            if (inputDigits.length >= 6 && profile.phone) {
-              const pDigits = profile.phone.replace(/\D/g, "");
-              if (
-                pDigits === inputDigits ||
-                pDigits.endsWith(inputDigits) ||
-                inputDigits.endsWith(pDigits)
-              ) {
-                loginUsername(profile.username);
-                return { success: true, username: profile.username };
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {}
-
-    return { success: false, error: "not_found" };
+    return res;
   };
 
   const checkAccountExists = async (
     username: string,
     phone?: string
   ): Promise<{ usernameExists: boolean; phoneExists: boolean }> => {
-    const cleanUser = username.trim().toLowerCase().replace(/^@/, "");
-    const inputDigits = phone ? phone.replace(/\D/g, "") : "";
-
-    let usernameExists = false;
-    let phoneExists = false;
-
-    try {
-      const userDoc = await getDoc(doc(db, "user_profiles", cleanUser));
-      if (userDoc.exists()) {
-        usernameExists = true;
-      }
-
-      if (inputDigits && inputDigits.length >= 6) {
-        const snap = await getDocs(collection(db, "user_profiles"));
-        for (const d of snap.docs) {
-          const u = d.data() as UserProfile;
-          if (u.phone) {
-            const uDigits = u.phone.replace(/\D/g, "");
-            if (
-              uDigits === inputDigits ||
-              uDigits.endsWith(inputDigits) ||
-              inputDigits.endsWith(uDigits)
-            ) {
-              phoneExists = true;
-              break;
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Error checking account exists:", e);
-    }
-
-    return { usernameExists, phoneExists };
+    return checkIfAccountExists(username, phone);
   };
 
   const logoutUsername = () => {

@@ -1,31 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowDown,
-  Bell,
-  BellOff,
-  BellRing,
-  Check,
-  Copy,
-  CornerUpLeft,
-  Download,
-  Edit2,
-  ImagePlus,
-  LogIn,
-  MessageCircle,
-  MoreHorizontal,
-  Pin,
-  Search,
-  Send,
-  Trash2,
-  User,
-  Users,
-  Video,
-  X,
-  ZoomIn,
-} from "lucide-react";
-import Link from "next/link";
+import { ArrowDown, Check, MessageCircle } from "lucide-react";
 import {
   FamilyChatMessage,
   FamilyMember,
@@ -33,7 +9,6 @@ import {
   Language,
   UserProfile,
   UserPresence,
-  getCountryFlag,
 } from "@/types/family";
 import { compressImageFile } from "@/lib/imageUtils";
 import {
@@ -41,11 +16,17 @@ import {
   requestChatNotificationPermission,
   vibrateDevice,
 } from "@/lib/notificationUtils";
-import VoiceRecorder from "@/components/VoiceRecorder";
-import VoiceMessagePlayer from "@/components/VoiceMessagePlayer";
 import GroupInfoModal from "@/components/GroupInfoModal";
 import OnlineMembersModal from "@/components/OnlineMembersModal";
 import FamilyGroupCallModal from "@/components/FamilyGroupCallModal";
+import ChatHeader from "./chat/ChatHeader";
+import ChatPinnedBanner from "./chat/ChatPinnedBanner";
+import ChatMessageItem from "./chat/ChatMessageItem";
+import ChatInputBar from "./chat/ChatInputBar";
+import ChatQuickLoginForm from "./chat/ChatQuickLoginForm";
+import ChatActionSheet from "./chat/ChatActionSheet";
+import ChatLightbox from "./chat/ChatLightbox";
+import { formatDateLabel } from "./chat/chatUtils";
 
 interface FamilyChatProps {
   messages: FamilyChatMessage[];
@@ -67,74 +48,6 @@ interface FamilyChatProps {
   onDeleteOwn?: (id: string) => Promise<void>;
   onDeleteAdmin?: (id: string) => void;
   onQuickLogin?: (username: string, displayName: string) => Promise<void>;
-}
-
-const REACTION_EMOJIS = ["❤️", "👍", "😂", "🤲", "😊", "🎉", "🔥"];
-
-const AVATAR_PALETTES = [
-  "bg-emerald-700 text-amber-200",
-  "bg-amber-600 text-white",
-  "bg-teal-700 text-teal-100",
-  "bg-indigo-700 text-indigo-100",
-  "bg-rose-700 text-rose-100",
-  "bg-purple-700 text-purple-100",
-  "bg-cyan-700 text-cyan-100",
-  "bg-orange-700 text-orange-100",
-];
-
-function getAvatarPalette(username: string): string {
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
-}
-
-function getInitials(name: string): string {
-  if (!name) return "?";
-  const cleaned = name.replace(/[@._-]/g, " ").trim();
-  const parts = cleaned.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return Array.from(parts[0])[0]?.toUpperCase() || "?";
-  const first = Array.from(parts[0])[0] || "";
-  const last = Array.from(parts[parts.length - 1])[0] || "";
-  return (first + last).toUpperCase();
-}
-
-function formatDateLabel(isoDate: string, lang: Language): string {
-  const date = new Date(isoDate);
-  if (isNaN(date.getTime())) return "";
-
-  const now = new Date();
-  const todayStr = now.toDateString();
-
-  const yesterday = new Date();
-  yesterday.setDate(now.getDate() - 1);
-  const yesterdayStr = yesterday.toDateString();
-
-  const msgDateStr = date.toDateString();
-
-  if (msgDateStr === todayStr) {
-    return lang === "bn" ? "আজ" : "Today";
-  }
-  if (msgDateStr === yesterdayStr) {
-    return lang === "bn" ? "গতকাল" : "Yesterday";
-  }
-
-  return date.toLocaleDateString(lang === "bn" ? "bn-BD" : "en-US", {
-    day: "numeric",
-    month: "short",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
-}
-
-function formatMessageTime(isoDate: string, lang: Language): string {
-  const date = new Date(isoDate);
-  if (isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString(lang === "bn" ? "bn-BD" : [], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 export default function FamilyChat({
@@ -168,7 +81,7 @@ export default function FamilyChat({
   const [downloadingImageId, setDownloadingImageId] = useState<string | null>(null);
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
-  // Group Info Modal & Online Modal states
+  // Modal states
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
   const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
   const [isGroupCallModalOpen, setIsGroupCallModalOpen] = useState(false);
@@ -189,7 +102,7 @@ export default function FamilyChat({
     setNotifPermission(res);
   };
 
-  // Mark chat as read when mounted or when message count changes
+  // Mark chat as read
   useEffect(() => {
     onMarkRead?.();
   }, [messages.length, onMarkRead]);
@@ -201,7 +114,6 @@ export default function FamilyChat({
       if (prefill) {
         setText(prefill);
         sessionStorage.removeItem("bongsho_prefill_chat_text");
-        setTimeout(() => textareaRef.current?.focus(), 120);
       }
     }
   }, []);
@@ -213,7 +125,7 @@ export default function FamilyChat({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  // Swipe to reply and Touch-and-Hold states
+  // Swipe-to-reply states
   const [swipingMsgId, setSwipingMsgId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState<number>(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number; msgId: string } | null>(null);
@@ -233,9 +145,7 @@ export default function FamilyChat({
     hasVibratedSwipeRef.current = false;
     isHorizontalSwipeRef.current = null;
 
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       vibrateDevice([40]);
       setActiveMenuMessage(msg);
@@ -247,7 +157,6 @@ export default function FamilyChat({
 
   const handleTouchMove = (msg: FamilyChatMessage, e: React.TouchEvent) => {
     if (!touchStartRef.current || touchStartRef.current.msgId !== msg.id) return;
-
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartRef.current.x;
     const deltaY = touch.clientY - touchStartRef.current.y;
@@ -295,7 +204,8 @@ export default function FamilyChat({
 
     if (swipingMsgId === msg.id) {
       if (swipeOffset >= 38) {
-        handleStartReply(msg);
+        setEditingMessage(null);
+        setReplyingTo(msg);
       }
       setSwipingMsgId(null);
       setSwipeOffset(0);
@@ -320,39 +230,23 @@ export default function FamilyChat({
   const [searchQuery, setSearchQuery] = useState("");
   const [showPinnedOnly, setShowPinnedOnly] = useState(false);
 
-  // UI toggles
+  // Scroll tracking
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Quick inline login states
-  const [quickName, setQuickName] = useState("");
-  const [quickUsername, setQuickUsername] = useState("");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const prevMessagesCountRef = useRef(messages.length);
 
-  // Lookup map for family members by username
+  // Lookup map for family members
   const memberByUsername = useMemo(() => {
     const map = new Map<string, FamilyMember>();
     for (const m of members) {
-      if (m.username) {
-        map.set(m.username.toLowerCase(), m);
-      }
+      if (m.username) map.set(m.username.toLowerCase(), m);
     }
     return map;
   }, [members]);
 
-  // Active participants count
-  const participantCount = useMemo(() => {
-    const set = new Set(messages.map((m) => m.authorUsername));
-    return set.size;
-  }, [messages]);
-
-  // Active typing indicator names
   const activeTypingNames = useMemo(() => {
     const entries = Object.entries(typingUsers).filter(([uname]) => uname !== currentUsername);
     if (entries.length === 0) return null;
@@ -361,7 +255,6 @@ export default function FamilyChat({
     return `${entries[0][1].displayName} ${lang === "bn" ? "ও আরও অনেকে" : "and others"}`;
   }, [typingUsers, currentUsername, lang]);
 
-  // Mention suggestions list
   const mentionSuggestions = useMemo(() => {
     if (!showMentionSuggestions) return [];
     const q = mentionQuery.toLowerCase();
@@ -375,15 +268,9 @@ export default function FamilyChat({
       .slice(0, 6);
   }, [members, showMentionSuggestions, mentionQuery]);
 
-  // Pinned messages
-  const pinnedMessages = useMemo(
-    () => messages.filter((m) => m.isPinned),
-    [messages]
-  );
-  const latestPinned =
-    pinnedMessages.length > 0 ? pinnedMessages[pinnedMessages.length - 1] : null;
+  const pinnedMessages = useMemo(() => messages.filter((m) => m.isPinned), [messages]);
+  const latestPinned = pinnedMessages.length > 0 ? pinnedMessages[pinnedMessages.length - 1] : null;
 
-  // Filtered messages
   const filteredMessages = useMemo(() => {
     return messages.filter((m) => {
       if (showPinnedOnly && !m.isPinned) return false;
@@ -407,7 +294,6 @@ export default function FamilyChat({
   useEffect(() => {
     const isNewMessage = messages.length > prevMessagesCountRef.current;
     prevMessagesCountRef.current = messages.length;
-
     if (!isNewMessage) return;
 
     if (!showScrollBottom) {
@@ -427,33 +313,20 @@ export default function FamilyChat({
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const isUp = distanceFromBottom > 140;
     setShowScrollBottom(isUp);
-    if (!isUp) {
-      setUnreadCount(0);
-    }
+    if (!isUp) setUnreadCount(0);
   };
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 120)}px`;
-  }, [text]);
 
   const scrollToMessage = (msgId: string) => {
     const el = document.getElementById(`chat-msg-${msgId}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       setHighlightedId(msgId);
-      setTimeout(() => {
-        setHighlightedId((prev) => (prev === msgId ? null : prev));
-      }, 2000);
+      setTimeout(() => setHighlightedId((prev) => (prev === msgId ? null : prev)), 2000);
     }
   };
 
   const getDisplayAuthorName = (msg: FamilyChatMessage) => {
-    if (lang === "bn") {
-      return msg.authorNameBn || msg.authorName || msg.authorUsername;
-    }
+    if (lang === "bn") return msg.authorNameBn || msg.authorName || msg.authorUsername;
     return msg.authorNameEn || msg.authorName || msg.authorUsername;
   };
 
@@ -468,7 +341,6 @@ export default function FamilyChat({
       onSelectMemberProfile?.(matched);
       return;
     }
-    // Create temporary member object so non-tree users can be viewed
     const pseudo: FamilyMember = {
       id: `user-${norm}`,
       username: norm,
@@ -504,16 +376,10 @@ export default function FamilyChat({
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
 
-      setDownloadToast(
-        lang === "bn" ? "ছবি ডিভাইসে সংরক্ষণ হয়েছে!" : "Photo saved to device!"
-      );
+      setDownloadToast(lang === "bn" ? "ছবি ডিভাইসে সংরক্ষণ হয়েছে!" : "Photo saved to device!");
       setTimeout(() => setDownloadToast(null), 2500);
     } catch {
-      setDownloadToast(
-        lang === "bn"
-          ? "ডাউনলোড ব্যর্থ হয়েছে, আবার চেষ্টা করুন।"
-          : "Download failed, please retry."
-      );
+      setDownloadToast(lang === "bn" ? "ডাউনলোড ব্যর্থ হয়েছে, আবার চেষ্টা করুন।" : "Download failed, please retry.");
       setTimeout(() => setDownloadToast(null), 3000);
     } finally {
       setDownloadingImageId(null);
@@ -527,23 +393,15 @@ export default function FamilyChat({
     try {
       const compressed = await compressImageFile(file, 880, 0.76);
       setSelectedImage(compressed);
-      setTimeout(() => textareaRef.current?.focus(), 50);
     } catch {
-      alert(
-        lang === "bn"
-          ? "ছবিটি প্রসেস করা যায়নি। অন্য ছবি চেষ্টা করুন।"
-          : "Could not process image. Please try another photo."
-      );
+      alert(lang === "bn" ? "ছবি প্রসেস করা যায়নি।" : "Could not process image.");
     } finally {
       setIsCompressingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleTextChange = (val: string) => {
     setText(val);
-
-    // Detect @mention trigger
     const lastAtIdx = val.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const afterAt = val.slice(lastAtIdx + 1);
@@ -557,7 +415,6 @@ export default function FamilyChat({
       setShowMentionSuggestions(false);
     }
 
-    // Debounced typing status
     onTypingChange?.(true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
@@ -566,18 +423,13 @@ export default function FamilyChat({
   };
 
   const handleSelectMention = (member: FamilyMember) => {
-    const handle =
-      member.username ||
-      member.nameEn.toLowerCase().replace(/[^a-z0-9]/g, "") ||
-      "member";
+    const handle = member.username || member.nameEn.toLowerCase().replace(/[^a-z0-9]/g, "");
     const lastAtIdx = text.lastIndexOf("@");
     if (lastAtIdx >= 0) {
       const prefix = text.slice(0, lastAtIdx);
-      const newText = `${prefix}@${handle} `;
-      setText(newText);
+      setText(`${prefix}@${handle} `);
     }
     setShowMentionSuggestions(false);
-    setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
   const handleSendVoice = async (audioUrl: string, durationSeconds: number) => {
@@ -585,14 +437,8 @@ export default function FamilyChat({
     setIsSending(true);
 
     try {
-      const authorNameBn =
-        currentUserProfile?.nameBn ||
-        currentUserProfile?.nameEn ||
-        currentUsername;
-      const authorNameEn =
-        currentUserProfile?.nameEn ||
-        currentUserProfile?.nameBn ||
-        currentUsername;
+      const authorNameBn = currentUserProfile?.nameBn || currentUserProfile?.nameEn || currentUsername;
+      const authorNameEn = currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername;
 
       const newMsg: FamilyChatMessage = {
         id: `chat-${Date.now()}`,
@@ -603,23 +449,14 @@ export default function FamilyChat({
         authorName: lang === "bn" ? authorNameBn : authorNameEn,
         authorNameBn,
         authorNameEn,
-        authorCountry:
-          currentUserProfile?.countryBn || currentUserProfile?.countryEn,
+        authorCountry: currentUserProfile?.countryBn || currentUserProfile?.countryEn,
         authorPhotoUrl: currentUserProfile?.photoUrl || undefined,
         createdAt: new Date().toISOString(),
         replyTo: replyingTo
           ? {
               id: replyingTo.id,
               authorName: getDisplayAuthorName(replyingTo),
-              text:
-                replyingTo.text.slice(0, 140) ||
-                (replyingTo.audioUrl
-                  ? lang === "bn"
-                    ? "🎤 ভয়েস বার্তা"
-                    : "🎤 Voice note"
-                  : lang === "bn"
-                  ? "📷 ছবি"
-                  : "📷 Photo"),
+              text: replyingTo.text.slice(0, 140) || (replyingTo.audioUrl ? "🎤 Voice Note" : "📷 Photo"),
             }
           : undefined,
       };
@@ -651,14 +488,8 @@ export default function FamilyChat({
         setEditingMessage(null);
         setText("");
       } else {
-        const authorNameBn =
-          currentUserProfile?.nameBn ||
-          currentUserProfile?.nameEn ||
-          currentUsername;
-        const authorNameEn =
-          currentUserProfile?.nameEn ||
-          currentUserProfile?.nameBn ||
-          currentUsername;
+        const authorNameBn = currentUserProfile?.nameBn || currentUserProfile?.nameEn || currentUsername;
+        const authorNameEn = currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername;
 
         const newMsg: FamilyChatMessage = {
           id: `chat-${Date.now()}`,
@@ -668,23 +499,14 @@ export default function FamilyChat({
           authorName: lang === "bn" ? authorNameBn : authorNameEn,
           authorNameBn,
           authorNameEn,
-          authorCountry:
-            currentUserProfile?.countryBn || currentUserProfile?.countryEn,
+          authorCountry: currentUserProfile?.countryBn || currentUserProfile?.countryEn,
           authorPhotoUrl: currentUserProfile?.photoUrl || undefined,
           createdAt: new Date().toISOString(),
           replyTo: replyingTo
             ? {
                 id: replyingTo.id,
                 authorName: getDisplayAuthorName(replyingTo),
-                text:
-                  replyingTo.text.slice(0, 140) ||
-                  (replyingTo.audioUrl
-                    ? lang === "bn"
-                      ? "🎤 ভয়েস বার্তা"
-                      : "🎤 Voice note"
-                    : lang === "bn"
-                    ? "📷 ছবি"
-                    : "📷 Photo"),
+                text: replyingTo.text.slice(0, 140) || (replyingTo.audioUrl ? "🎤 Voice Note" : "📷 Photo"),
               }
             : undefined,
         };
@@ -711,17 +533,12 @@ export default function FamilyChat({
     }
   };
 
-  const handleToggleReaction = async (
-    msg: FamilyChatMessage,
-    emoji: string
-  ) => {
+  const handleToggleReaction = async (msg: FamilyChatMessage, emoji: string) => {
     if (!currentUsername) return;
     const currentReactions = { ...(msg.reactions || {}) };
-    const usersForEmoji = currentReactions[emoji]
-      ? [...currentReactions[emoji]]
-      : [];
-
+    const usersForEmoji = currentReactions[emoji] ? [...currentReactions[emoji]] : [];
     const idx = usersForEmoji.indexOf(currentUsername);
+
     if (idx >= 0) {
       usersForEmoji.splice(idx, 1);
     } else {
@@ -734,36 +551,15 @@ export default function FamilyChat({
       currentReactions[emoji] = usersForEmoji;
     }
 
-    const updated: FamilyChatMessage = {
-      ...msg,
-      reactions: currentReactions,
-    };
+    const updated: FamilyChatMessage = { ...msg, reactions: currentReactions };
     setActiveMenuMessage(null);
     await (onUpdate ? onUpdate(updated) : onSend(updated));
   };
 
   const handleTogglePin = async (msg: FamilyChatMessage) => {
-    const updated: FamilyChatMessage = {
-      ...msg,
-      isPinned: !msg.isPinned,
-    };
+    const updated: FamilyChatMessage = { ...msg, isPinned: !msg.isPinned };
     setActiveMenuMessage(null);
     await (onUpdate ? onUpdate(updated) : onSend(updated));
-  };
-
-  const handleStartEdit = (msg: FamilyChatMessage) => {
-    setReplyingTo(null);
-    setEditingMessage(msg);
-    setText(msg.text);
-    setActiveMenuMessage(null);
-    setTimeout(() => textareaRef.current?.focus(), 50);
-  };
-
-  const handleStartReply = (msg: FamilyChatMessage) => {
-    setEditingMessage(null);
-    setReplyingTo(msg);
-    setActiveMenuMessage(null);
-    setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
   const handleCopyText = async (msg: FamilyChatMessage) => {
@@ -771,9 +567,7 @@ export default function FamilyChat({
       await navigator.clipboard.writeText(msg.text);
       setCopiedId(msg.id);
       setActiveMenuMessage(null);
-      setTimeout(() => {
-        setCopiedId((prev) => (prev === msg.id ? null : prev));
-      }, 1800);
+      setTimeout(() => setCopiedId((prev) => (prev === msg.id ? null : prev)), 1800);
     } catch {}
   };
 
@@ -781,49 +575,17 @@ export default function FamilyChat({
     setActiveMenuMessage(null);
     const isMine = msg.authorUsername === currentUsername;
     if (isMine && onDeleteOwn) {
-      const confirmMsg =
-        lang === "bn"
-          ? "আপনি কি আপনার এই বার্তাটি মুছে ফেলতে চান?"
-          : "Delete your message?";
-      if (window.confirm(confirmMsg)) {
-        await onDeleteOwn(msg.id);
-      }
+      const confirmMsg = lang === "bn" ? "আপনি কি এই বার্তাটি মুছবেন?" : "Delete your message?";
+      if (window.confirm(confirmMsg)) await onDeleteOwn(msg.id);
       return;
     }
-    if (onDeleteAdmin) {
-      onDeleteAdmin(msg.id);
-    }
-  };
-
-  const handleQuickLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!onQuickLogin) return;
-    const rawName = quickName.trim();
-    const generatedUser =
-      quickUsername.trim() ||
-      rawName
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_]/g, "") ||
-      `member_${Date.now().toString().slice(-4)}`;
-
-    if (!rawName && !quickUsername.trim()) return;
-    setIsLoggingIn(true);
-    try {
-      await onQuickLogin(generatedUser, rawName || generatedUser);
-    } finally {
-      setIsLoggingIn(false);
-    }
+    if (onDeleteAdmin) onDeleteAdmin(msg.id);
   };
 
   const currentDisplayName =
     lang === "bn"
-      ? currentUserProfile?.nameBn ||
-        currentUserProfile?.nameEn ||
-        currentUsername
-      : currentUserProfile?.nameEn ||
-        currentUserProfile?.nameBn ||
-        currentUsername;
+      ? currentUserProfile?.nameBn || currentUserProfile?.nameEn || currentUsername || ""
+      : currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername || "";
 
   const handleStartGroupCall = async () => {
     setIsGroupCallModalOpen(true);
@@ -839,40 +601,12 @@ export default function FamilyChat({
         authorName,
         authorNameBn: currentUserProfile?.nameBn,
         authorNameEn: currentUserProfile?.nameEn,
-        authorCountry:
-          currentUserProfile?.countryBn || currentUserProfile?.countryEn,
+        authorCountry: currentUserProfile?.countryBn || currentUserProfile?.countryEn,
         authorPhotoUrl: currentUserProfile?.photoUrl || undefined,
         createdAt: new Date().toISOString(),
       };
       await onSend(callMsg);
     }
-  };
-
-  // Render message text with highlighted, clickable @mentions
-  const renderMessageContent = (messageText: string, isMine: boolean) => {
-    const parts = messageText.split(/(@[a-zA-Z0-9_]+)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith("@") && part.length > 1) {
-        const uname = part.slice(1).toLowerCase();
-        return (
-          <span
-            key={i}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenProfile(uname, `@${uname}`);
-            }}
-            className={`font-bold px-1 py-0.5 rounded cursor-pointer transition ${
-              isMine
-                ? "bg-emerald-800/80 text-amber-300 hover:bg-emerald-700 underline"
-                : "bg-emerald-100 text-emerald-900 hover:bg-emerald-200 underline"
-            }`}
-          >
-            {part}
-          </span>
-        );
-      }
-      return part;
-    });
   };
 
   return (
@@ -886,264 +620,49 @@ export default function FamilyChat({
       )}
 
       {/* CHAT HEADER */}
-      <header className="px-3.5 sm:px-6 py-2.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-2 border-b border-emerald-800/80 z-20 flex-shrink-0">
-        {/* Group Logo & Name Clickable */}
-        <div
-          onClick={() => setIsGroupInfoOpen(true)}
-          className="flex items-center gap-2.5 sm:gap-3 min-w-0 cursor-pointer group/hdr hover:opacity-95 transition"
-          title={lang === "bn" ? "গ্রুপের বিস্তারিত ও সেটিংস" : "View group info"}
-        >
-          <div className="relative flex-shrink-0">
-            {groupSettings?.logoUrl ? (
-              <img
-                src={groupSettings.logoUrl}
-                alt="Group Logo"
-                className="w-10 h-10 rounded-2xl object-cover border border-amber-300 shadow-sm"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center shadow-sm">
-                <MessageCircle className="w-5 h-5 stroke-[2.2]" />
-              </div>
-            )}
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-emerald-950" />
-          </div>
+      <ChatHeader
+        groupSettings={groupSettings}
+        messagesCount={messages.length}
+        onlineCount={onlineCount}
+        pinnedCount={pinnedMessages.length}
+        showPinnedOnly={showPinnedOnly}
+        notifPermission={notifPermission}
+        isSearchOpen={isSearchOpen}
+        currentUsername={currentUsername}
+        currentUserProfile={currentUserProfile}
+        currentDisplayName={currentDisplayName}
+        lang={lang}
+        onOpenGroupInfo={() => setIsGroupInfoOpen(true)}
+        onOpenOnlineMembers={() => setIsOnlineModalOpen(true)}
+        onStartGroupCall={handleStartGroupCall}
+        onTogglePinnedFilter={() => setShowPinnedOnly((p) => !p)}
+        onToggleNotification={handleToggleNotification}
+        onToggleSearch={() => {
+          setIsSearchOpen((p) => !p);
+          if (isSearchOpen) setSearchQuery("");
+        }}
+      />
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-sm sm:text-base truncate group-hover/hdr:text-amber-300 transition">
-                {groupSettings?.groupNameEn && !/bongsho|বংশবৃক্ষ/i.test(groupSettings.groupNameEn)
-                  ? groupSettings.groupNameEn
-                  : groupSettings?.groupNameBn && !/bongsho|বংশবৃক্ষ/i.test(groupSettings.groupNameBn)
-                  ? groupSettings.groupNameBn
-                  : "Family Chat"}
-              </h2>
-
-              {/* Online Counter Badge */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsOnlineModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-800/90 hover:bg-emerald-700 text-amber-300 border border-emerald-700 cursor-pointer transition shadow-2xs"
-                title={lang === "bn" ? "অনলাইন সদস্যদের তালিকা" : "Online members"}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{onlineCount || 1} {lang === "bn" ? "অনলাইন" : "Online"}</span>
-              </button>
-            </div>
-            <p className="text-[11px] text-emerald-200/90 truncate">
-              {lang === "bn"
-                ? `${messages.length}টি বার্তা • বিস্তারিত দেখতে ট্যাপ করুন`
-                : `${messages.length} messages • Tap for group info`}
-            </p>
-          </div>
-        </div>
-
-        {/* Header Right Actions */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Family Group Call Button */}
-          <button
-            type="button"
-            onClick={handleStartGroupCall}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-xs cursor-pointer transition border border-emerald-500/70"
-            title={
-              lang === "bn"
-                ? "ফ্যামিলি গ্রুপ মিটিং (অডিও ও ভিডিও কল)"
-                : "Family Group Call (Audio & Video)"
-            }
-          >
-            <Video className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">{lang === "bn" ? "গ্রুপ কল" : "Call"}</span>
-          </button>
-
-          {pinnedMessages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowPinnedOnly((prev) => !prev)}
-              className={`p-2 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                showPinnedOnly
-                  ? "bg-amber-400 text-emerald-950 shadow-xs"
-                  : "bg-emerald-900/80 hover:bg-emerald-800 text-amber-300 border border-emerald-700/70"
-              }`}
-              title={
-                lang === "bn" ? "পিন করা বার্তা দেখুন" : "Filter pinned messages"
-              }
-            >
-              <Pin className="w-3.5 h-3.5" />
-              <span className="text-[11px]">{pinnedMessages.length}</span>
-            </button>
-          )}
-
-          {/* Notification Permission Toggle */}
-          <button
-            type="button"
-            onClick={handleToggleNotification}
-            className={`p-2 rounded-xl transition cursor-pointer ${
-              notifPermission === "granted"
-                ? "bg-emerald-900/80 hover:bg-emerald-800 text-amber-300 border border-emerald-700/70"
-                : notifPermission === "denied"
-                ? "bg-rose-900/40 text-rose-300 border border-rose-700/40"
-                : "bg-amber-400 text-emerald-950 shadow-xs"
-            }`}
-            title={
-              notifPermission === "granted"
-                ? lang === "bn"
-                  ? "নোটিফিকেশন চালু আছে"
-                  : "Notifications active"
-                : notifPermission === "denied"
-                ? lang === "bn"
-                  ? "নোটিফিকেশন ব্লক করা আছে"
-                  : "Notifications blocked"
-                : lang === "bn"
-                ? "ফ্রি নোটিফিকেশন চালু করুন"
-                : "Enable free notifications"
-            }
-          >
-            {notifPermission === "granted" ? (
-              <BellRing className="w-4 h-4" />
-            ) : notifPermission === "denied" ? (
-              <BellOff className="w-4 h-4" />
-            ) : (
-              <Bell className="w-4 h-4" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsSearchOpen((prev) => !prev);
-              if (isSearchOpen) setSearchQuery("");
-            }}
-            className={`p-2 rounded-xl transition cursor-pointer ${
-              isSearchOpen
-                ? "bg-amber-400 text-emerald-950"
-                : "bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 border border-emerald-700/70"
-            }`}
-            title={lang === "bn" ? "বার্তা খুঁজুন" : "Search messages"}
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          {currentUsername && (
-            <Link
-              href="/profile"
-              className="hidden sm:flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/70 text-xs text-emerald-100 transition"
-              title={lang === "bn" ? "প্রোফাইল দেখুন" : "View Profile"}
-            >
-              {currentUserProfile?.photoUrl ? (
-                <img
-                  src={currentUserProfile.photoUrl}
-                  alt={currentDisplayName || currentUsername}
-                  className="w-5 h-5 rounded-full object-cover border border-amber-300"
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-amber-400 text-emerald-950 font-bold text-[10px] flex items-center justify-center">
-                  {(currentDisplayName || currentUsername).charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="font-semibold text-xs truncate max-w-[80px]">
-                {currentDisplayName || currentUsername}
-              </span>
-            </Link>
-          )}
-        </div>
-      </header>
-
-      {/* SEARCH BAR */}
-      {isSearchOpen && (
-        <div className="px-3.5 py-2 bg-emerald-900/95 border-b border-emerald-800 flex items-center gap-2 z-10">
-          <Search className="w-4 h-4 text-emerald-300" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              lang === "bn"
-                ? "বার্তার যেকোনো অংশ দিয়ে খুঁজুন..."
-                : "Search in messages..."
-            }
-            className="flex-1 bg-transparent text-white placeholder-emerald-300/60 text-xs sm:text-sm focus:outline-none"
-            autoFocus
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="p-1 text-emerald-300 hover:text-white cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setIsSearchOpen(false);
-              setSearchQuery("");
-            }}
-            className="p-1 rounded-lg hover:bg-emerald-800 text-emerald-200 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* PINNED MESSAGE BANNER */}
-      {latestPinned && !showPinnedOnly && (
-        <div className="px-3.5 py-2 bg-amber-50/95 border-b border-amber-200/80 flex items-center justify-between gap-2 text-xs z-10">
-          <button
-            type="button"
-            onClick={() => scrollToMessage(latestPinned.id)}
-            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer group"
-          >
-            <div className="w-6 h-6 rounded-lg bg-amber-400/30 text-amber-800 flex items-center justify-center flex-shrink-0">
-              <Pin className="w-3.5 h-3.5 rotate-45" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-[11px] text-amber-900">
-                  {lang === "bn" ? "পিন করা বার্তা" : "Pinned Message"}
-                </span>
-                <span className="text-[10px] text-amber-700 font-medium truncate">
-                  • {getDisplayAuthorName(latestPinned)}
-                </span>
-              </div>
-              <p className="text-stone-700 truncate text-xs group-hover:text-emerald-950">
-                {latestPinned.text || (latestPinned.audioUrl ? "🎤 Voice Note" : "📷 Photo")}
-              </p>
-            </div>
-          </button>
-          {(isAdmin || latestPinned.authorUsername === currentUsername) && (
-            <button
-              type="button"
-              onClick={() => handleTogglePin(latestPinned)}
-              className="p-1 rounded-lg hover:bg-amber-200/60 text-amber-800 cursor-pointer"
-              title={lang === "bn" ? "আনপিন করুন" : "Unpin"}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* FILTER ACTIVE BANNER */}
-      {showPinnedOnly && (
-        <div className="px-4 py-2 bg-amber-100/90 border-b border-amber-200 flex items-center justify-between text-xs text-amber-950 font-semibold">
-          <span className="flex items-center gap-1.5">
-            <Pin className="w-3.5 h-3.5" />
-            {lang === "bn"
-              ? `শুধুমাত্র পিন করা বার্তা দেখানো হচ্ছে (${pinnedMessages.length})`
-              : `Showing pinned messages only (${pinnedMessages.length})`}
-          </span>
-          <button
-            type="button"
-            onClick={() => setShowPinnedOnly(false)}
-            className="text-emerald-900 underline font-bold cursor-pointer"
-          >
-            {lang === "bn" ? "সব দেখুন" : "Show all"}
-          </button>
-        </div>
-      )}
+      {/* PINNED & SEARCH BANNER */}
+      <ChatPinnedBanner
+        isSearchOpen={isSearchOpen}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onCloseSearch={() => {
+          setIsSearchOpen(false);
+          setSearchQuery("");
+        }}
+        latestPinned={latestPinned}
+        showPinnedOnly={showPinnedOnly}
+        pinnedCount={pinnedMessages.length}
+        isAdmin={isAdmin}
+        currentUsername={currentUsername}
+        lang={lang}
+        onScrollToMessage={scrollToMessage}
+        onTogglePin={handleTogglePin}
+        onShowAll={() => setShowPinnedOnly(false)}
+        getDisplayAuthorName={getDisplayAuthorName}
+      />
 
       {/* MESSAGES LIST */}
       <div
@@ -1166,11 +685,7 @@ export default function FamilyChat({
                 : "No messages yet"}
             </p>
             <p className="text-xs text-stone-500 mt-1 max-w-xs">
-              {searchQuery
-                ? lang === "bn"
-                  ? "অন্য কোনো শব্দ দিয়ে খুঁজে দেখুন।"
-                  : "Try searching with a different keyword."
-                : lang === "bn"
+              {lang === "bn"
                 ? "প্রথম বার্তাটি পাঠিয়ে কথোপকথন শুরু করুন!"
                 : "Write a message to start the family conversation!"}
             </p>
@@ -1179,74 +694,29 @@ export default function FamilyChat({
           filteredMessages.map((message, index) => {
             const isMine = message.authorUsername === currentUsername;
             const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
-            const nextMsg =
-              index < filteredMessages.length - 1
-                ? filteredMessages[index + 1]
-                : null;
+            const nextMsg = index < filteredMessages.length - 1 ? filteredMessages[index + 1] : null;
 
             const currentDateLabel = formatDateLabel(message.createdAt, lang);
-            const prevDateLabel = prevMsg
-              ? formatDateLabel(prevMsg.createdAt, lang)
-              : null;
+            const prevDateLabel = prevMsg ? formatDateLabel(prevMsg.createdAt, lang) : null;
             const showDateDivider = currentDateLabel !== prevDateLabel;
 
             const isGroupedWithPrev =
               !showDateDivider &&
               prevMsg !== null &&
               prevMsg.authorUsername === message.authorUsername &&
-              Math.abs(
-                new Date(message.createdAt).getTime() -
-                  new Date(prevMsg.createdAt).getTime()
-              ) <
-                5 * 60 * 1000;
+              Math.abs(new Date(message.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) < 5 * 60 * 1000;
 
             const isGroupedWithNext =
               nextMsg !== null &&
               formatDateLabel(nextMsg.createdAt, lang) === currentDateLabel &&
               nextMsg.authorUsername === message.authorUsername &&
-              Math.abs(
-                new Date(nextMsg.createdAt).getTime() -
-                  new Date(message.createdAt).getTime()
-              ) <
-                5 * 60 * 1000;
+              Math.abs(new Date(nextMsg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5 * 60 * 1000;
 
-            const matchedMember = memberByUsername.get(
-              message.authorUsername.toLowerCase()
-            );
+            const matchedMember = memberByUsername.get(message.authorUsername.toLowerCase());
             const authorDisplayName = getDisplayAuthorName(message);
-            const countryFlag =
-              message.authorCountry ||
-              matchedMember?.countryBn ||
-              matchedMember?.countryEn
-                ? getCountryFlag(
-                    message.authorCountry ||
-                      matchedMember?.countryBn ||
-                      matchedMember?.countryEn
-                  )
-                : null;
-
-            const reactionEntries = Object.entries(
-              message.reactions || {}
-            ).filter(([, users]) => Array.isArray(users) && users.length > 0);
-
-            const isHighlighted = highlightedId === message.id;
-
-            // WhatsApp-style status check
-            const readCount = Object.keys(message.readBy || {}).filter(
-              (u) => u !== message.authorUsername
-            ).length;
-            const deliveredCount = Object.keys(message.deliveredTo || {}).filter(
-              (u) => u !== message.authorUsername
-            ).length;
-            const hasReadByOthers = readCount > 0 || message.status === "read";
-            const hasDeliveredToOthers =
-              deliveredCount > 0 ||
-              message.status === "delivered" ||
-              hasReadByOthers;
 
             return (
               <React.Fragment key={message.id}>
-                {/* DATE SEPARATOR */}
                 {showDateDivider && currentDateLabel && (
                   <div className="flex items-center justify-center my-3">
                     <span className="px-3 py-1 rounded-full bg-stone-200/85 backdrop-blur-xs text-stone-700 text-[11px] font-bold shadow-2xs border border-stone-300/60">
@@ -1255,402 +725,36 @@ export default function FamilyChat({
                   </div>
                 )}
 
-                {/* MESSAGE ROW */}
-                <div
-                  id={`chat-msg-${message.id}`}
-                  className={`flex items-end gap-2 transition-all duration-300 ${
-                    isMine ? "justify-end" : "justify-start"
-                  } ${isGroupedWithPrev ? "mt-0.5" : "mt-3"} ${
-                    isHighlighted
-                      ? "bg-amber-200/50 -mx-2 px-2 py-1 rounded-2xl"
-                      : ""
-                  }`}
-                >
-                  {/* Left Clickable Avatar for Others */}
-                  {!isMine && (
-                    <div className="w-8 flex-shrink-0 flex flex-col items-center">
-                      {!isGroupedWithNext ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleOpenProfile(
-                              message.authorUsername,
-                              authorDisplayName,
-                              message.authorPhotoUrl || matchedMember?.photoUrl
-                            )
-                          }
-                          className="cursor-pointer group/av focus:outline-none"
-                          title={lang === "bn" ? "প্রোফাইল দেখুন" : "View Profile"}
-                        >
-                          {message.authorPhotoUrl || matchedMember?.photoUrl ? (
-                            <img
-                              src={
-                                message.authorPhotoUrl || matchedMember?.photoUrl
-                              }
-                              alt={authorDisplayName}
-                              className="w-8 h-8 rounded-2xl object-cover border border-stone-300 shadow-2xs group-hover/av:scale-105 transition"
-                            />
-                          ) : (
-                            <div
-                              className={`w-8 h-8 rounded-2xl flex items-center justify-center text-xs font-extrabold shadow-2xs group-hover/av:scale-105 transition ${getAvatarPalette(
-                                message.authorUsername
-                              )}`}
-                            >
-                              {getInitials(authorDisplayName)}
-                            </div>
-                          )}
-                        </button>
-                      ) : (
-                        <div className="w-8" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Message Content Column */}
-                  <div
-                    className={`group relative max-w-[82%] sm:max-w-[75%] flex flex-col ${
-                      isMine ? "items-end" : "items-start"
-                    }`}
-                  >
-                    {/* Clickable Sender Name Header */}
-                    {!isGroupedWithPrev && (
-                      <div
-                        className={`flex items-center gap-1.5 mb-1 px-1 text-[11px] ${
-                          isMine ? "text-stone-600" : "text-stone-600"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleOpenProfile(
-                              message.authorUsername,
-                              authorDisplayName,
-                              message.authorPhotoUrl || matchedMember?.photoUrl
-                            )
-                          }
-                          className="font-bold text-stone-800 hover:text-emerald-800 hover:underline cursor-pointer text-left"
-                        >
-                          {isMine
-                            ? lang === "bn"
-                              ? "আপনি"
-                              : "You"
-                            : authorDisplayName}
-                        </button>
-                        {!isMine && (
-                          <span
-                            onClick={() =>
-                              handleOpenProfile(
-                                message.authorUsername,
-                                authorDisplayName,
-                                message.authorPhotoUrl || matchedMember?.photoUrl
-                              )
-                            }
-                            className="text-[10px] text-stone-400 font-mono hover:underline cursor-pointer"
-                          >
-                            @{message.authorUsername}
-                          </span>
-                        )}
-                        {countryFlag && (
-                          <span className="text-xs leading-none">
-                            {countryFlag}
-                          </span>
-                        )}
-                        {message.isPinned && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded-full">
-                            <Pin className="w-2.5 h-2.5 rotate-45" />
-                            {lang === "bn" ? "পিন" : "Pinned"}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Bubble + Action Trigger Wrapper */}
-                    <div
-                      className={`relative flex items-center gap-1.5 ${
-                        isMine ? "flex-row-reverse" : "flex-row"
-                      }`}
-                    >
-                      {/* Swipe-to-reply indicator */}
-                      {swipingMsgId === message.id && (
-                        <div
-                          className="absolute -left-9 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none transition-all duration-150 z-10"
-                          style={{
-                            opacity: Math.min(swipeOffset / 28, 1),
-                            transform: `scale(${Math.min(
-                              0.6 + (swipeOffset / 40) * 0.4,
-                              1.15
-                            )}) translateY(-50%)`,
-                          }}
-                        >
-                          <div
-                            className={`w-7 h-7 rounded-full flex items-center justify-center shadow-xs transition-colors ${
-                              swipeOffset >= 38
-                                ? "bg-emerald-600 text-white ring-2 ring-emerald-300"
-                                : "bg-stone-300 text-stone-700"
-                            }`}
-                          >
-                            <CornerUpLeft className="w-3.5 h-3.5" />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* MESSAGE BUBBLE */}
-                      <div
-                        onTouchStart={(e) => handleTouchStart(message, e)}
-                        onTouchMove={(e) => handleTouchMove(message, e)}
-                        onTouchEnd={() => handleTouchEnd(message)}
-                        onTouchCancel={handleTouchCancel}
-                        onContextMenu={(e) => {
-                          e.preventDefault();
-                          setActiveMenuMessage(message);
-                        }}
-                        style={{
-                          transform:
-                            swipingMsgId === message.id
-                              ? `translateX(${swipeOffset}px)`
-                              : undefined,
-                          transition:
-                            swipingMsgId === message.id
-                              ? "none"
-                              : "transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1)",
-                        }}
-                        className={`relative px-3.5 py-2.5 shadow-xs select-none touch-pan-y transition-colors ${
-                          isMine
-                            ? `bg-gradient-to-br from-emerald-900 to-emerald-950 text-white ${
-                                isGroupedWithNext
-                                  ? "rounded-2xl"
-                                  : "rounded-2xl rounded-br-xs"
-                              }`
-                            : `bg-white border border-stone-200/90 text-stone-800 ${
-                                isGroupedWithNext
-                                  ? "rounded-2xl"
-                                  : "rounded-2xl rounded-bl-xs"
-                              }`
-                        }`}
-                      >
-                        {/* Quoted Reply Preview */}
-                        {message.replyTo && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              scrollToMessage(message.replyTo!.id)
-                            }
-                            className={`w-full text-left mb-2 pl-2.5 pr-2 py-1.5 rounded-xl border-l-3 text-xs transition block cursor-pointer ${
-                              isMine
-                                ? "bg-emerald-950/60 border-amber-400 text-emerald-100 hover:bg-emerald-950/90"
-                                : "bg-stone-100 border-emerald-700 text-stone-700 hover:bg-stone-200/70"
-                            }`}
-                          >
-                            <span
-                              className={`font-bold text-[10px] block ${
-                                isMine ? "text-amber-300" : "text-emerald-800"
-                              }`}
-                            >
-                              {message.replyTo.authorName}
-                            </span>
-                            <span className="line-clamp-2 opacity-90 text-[11px]">
-                              {message.replyTo.text}
-                            </span>
-                          </button>
-                        )}
-
-                        {/* Voice Message Note */}
-                        {message.audioUrl && (
-                          <div className="my-1 w-full min-w-[210px] sm:min-w-[260px]">
-                            <VoiceMessagePlayer
-                              audioUrl={message.audioUrl}
-                              duration={message.audioDuration}
-                              isMine={isMine}
-                              lang={lang}
-                            />
-                          </div>
-                        )}
-
-                        {/* Attached Image with Download Button */}
-                        {message.imageUrl && (
-                          <div className="mb-2 relative group/img overflow-hidden rounded-xl border border-black/10 bg-black/5">
-                            <img
-                              src={message.imageUrl}
-                              alt="Chat attachment"
-                              onClick={() =>
-                                setLightboxImage(message.imageUrl!)
-                              }
-                              className="max-h-64 w-auto max-w-full object-cover rounded-xl cursor-pointer hover:opacity-95 transition"
-                            />
-                            {/* Download & Zoom overlay buttons */}
-                            <div className="absolute bottom-2 right-2 flex items-center gap-1.5 opacity-90 sm:opacity-0 group-hover/img:opacity-100 transition z-10">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadImage(
-                                    message.imageUrl!,
-                                    message.id
-                                  );
-                                }}
-                                disabled={downloadingImageId === message.id}
-                                className="px-2 py-1 rounded-lg bg-black/70 hover:bg-black/90 text-white transition cursor-pointer shadow-md flex items-center gap-1 text-[11px] font-bold"
-                                title={
-                                  lang === "bn"
-                                    ? "গ্যালারিতে ডাউনলোড করুন"
-                                    : "Save photo"
-                                }
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>{lang === "bn" ? "ডাউনলোড" : "Save"}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setLightboxImage(message.imageUrl!)
-                                }
-                                className="p-1.5 rounded-lg bg-black/70 hover:bg-black/90 text-white transition cursor-pointer shadow-md"
-                                title={lang === "bn" ? "বড় করে দেখুন" : "Zoom"}
-                              >
-                                <ZoomIn className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Message Text with Mentions */}
-                        {message.text && (
-                          <p className="text-[13.5px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {renderMessageContent(message.text, isMine)}
-                          </p>
-                        )}
-
-                        {/* Call Invitation Banner */}
-                        {message.text &&
-                          (message.text.includes("গ্রুপ কল") ||
-                            message.text.includes("Group Call")) && (
-                            <div className="mt-2 pt-2 border-t border-black/15 flex items-center justify-between gap-2">
-                              <span
-                                className={`text-[11px] font-bold flex items-center gap-1.5 ${
-                                  isMine ? "text-emerald-300" : "text-emerald-700"
-                                }`}
-                              >
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                {lang === "bn" ? "লাইভ মিটিং রুম" : "Live Room"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setIsGroupCallModalOpen(true)}
-                                className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition"
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                                <span>{lang === "bn" ? "কলে যোগ দিন" : "Join Call"}</span>
-                              </button>
-                            </div>
-                          )}
-
-                        {/* Timestamp + WhatsApp Ticks */}
-                        <div
-                          className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
-                            isMine ? "text-emerald-200/80" : "text-stone-400"
-                          }`}
-                        >
-                          {message.editedAt && (
-                            <span className="italic">
-                              {lang === "bn" ? "(এডিটেড)" : "(edited)"}
-                            </span>
-                          )}
-                          <span>
-                            {formatMessageTime(message.createdAt, lang)}
-                          </span>
-                          {copiedId === message.id && (
-                            <span className="text-amber-300 font-bold flex items-center gap-0.5">
-                              <Check className="w-2.5 h-2.5" />
-                              {lang === "bn" ? "কপি" : "Copied"}
-                            </span>
-                          )}
-
-                          {/* WhatsApp Tick Marks for own messages */}
-                          {isMine && (
-                            <span
-                              className="inline-flex items-center ml-0.5"
-                              title={
-                                hasReadByOthers
-                                  ? lang === "bn"
-                                    ? "পড়েছেন (Blue Ticks)"
-                                    : "Read"
-                                  : hasDeliveredToOthers
-                                  ? lang === "bn"
-                                    ? "ডেলিভার হয়েছে (Delivered)"
-                                    : "Delivered"
-                                  : lang === "bn"
-                                  ? "পাঠানো হয়েছে (Sent)"
-                                  : "Sent"
-                              }
-                            >
-                              {hasReadByOthers ? (
-                                <span className="text-sky-400 font-black tracking-tighter text-[11px] leading-none">
-                                  ✓✓
-                                </span>
-                              ) : hasDeliveredToOthers ? (
-                                <span className="text-emerald-300/80 font-black tracking-tighter text-[11px] leading-none">
-                                  ✓✓
-                                </span>
-                              ) : (
-                                <span className="text-emerald-300/70 font-bold text-[11px] leading-none">
-                                  ✓
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Desktop hover options trigger */}
-                      <div className="hidden sm:inline-flex opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveMenuMessage(message);
-                          }}
-                          className="p-1.5 rounded-full bg-white/90 hover:bg-white border border-stone-200 text-stone-600 hover:text-emerald-800 shadow-2xs cursor-pointer"
-                          title={
-                            lang === "bn" ? "মেনু ও ইমোজি" : "Reactions & Options"
-                          }
-                        >
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* REACTION PILLS BELOW BUBBLE */}
-                    {reactionEntries.length > 0 && (
-                      <div
-                        className={`flex flex-wrap gap-1 mt-1 ${
-                          isMine ? "justify-end" : "justify-start"
-                        }`}
-                      >
-                        {reactionEntries.map(([emoji, users]) => {
-                          const hasReacted =
-                            currentUsername && users.includes(currentUsername);
-                          return (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() =>
-                                handleToggleReaction(message, emoji)
-                              }
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold shadow-2xs transition cursor-pointer border ${
-                                hasReacted
-                                  ? "bg-amber-100/90 border-amber-300 text-emerald-950 font-bold"
-                                  : "bg-white/90 border-stone-200 text-stone-700 hover:bg-stone-100"
-                              }`}
-                            >
-                              <span>{emoji}</span>
-                              <span className="text-[10px]">{users.length}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ChatMessageItem
+                  message={message}
+                  isMine={isMine}
+                  isGroupedWithPrev={isGroupedWithPrev}
+                  isGroupedWithNext={isGroupedWithNext}
+                  matchedMember={matchedMember}
+                  authorDisplayName={authorDisplayName}
+                  lang={lang}
+                  currentUsername={currentUsername}
+                  swipingMsgId={swipingMsgId}
+                  swipeOffset={swipeOffset}
+                  highlightedId={highlightedId}
+                  copiedId={copiedId}
+                  downloadingImageId={downloadingImageId}
+                  onTouchStart={(e) => handleTouchStart(message, e)}
+                  onTouchMove={(e) => handleTouchMove(message, e)}
+                  onTouchEnd={() => handleTouchEnd(message)}
+                  onTouchCancel={handleTouchCancel}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setActiveMenuMessage(message);
+                  }}
+                  onOpenProfile={handleOpenProfile}
+                  onScrollToMessage={scrollToMessage}
+                  onLightboxImage={setLightboxImage}
+                  onDownloadImage={handleDownloadImage}
+                  onOpenMenu={() => setActiveMenuMessage(message)}
+                  onToggleReaction={(emoji) => handleToggleReaction(message, emoji)}
+                  onOpenCallRoom={() => setIsGroupCallModalOpen(true)}
+                />
               </React.Fragment>
             );
           })
@@ -1677,540 +781,72 @@ export default function FamilyChat({
         </button>
       )}
 
-      {/* INPUT BAR / QUICK LOGIN */}
+      {/* INPUT BAR OR QUICK LOGIN */}
       {currentUsername ? (
-        <div className="border-t border-stone-200 bg-white z-20 flex-shrink-0 relative">
-          {/* REAL-TIME TYPING INDICATOR BAR */}
-          {activeTypingNames && (
-            <div className="px-3.5 py-1 text-[11px] text-emerald-900 bg-emerald-50/95 border-b border-emerald-100/80 flex items-center gap-2 animate-in fade-in duration-150">
-              <span className="flex items-center gap-0.5">
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce"
-                  style={{ animationDelay: "0ms" }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce"
-                  style={{ animationDelay: "150ms" }}
-                />
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce"
-                  style={{ animationDelay: "300ms" }}
-                />
-              </span>
-              <span className="font-semibold">
-                {activeTypingNames}{" "}
-                {lang === "bn" ? "লিখছেন..." : "is typing..."}
-              </span>
-            </div>
-          )}
-
-          {/* EDITING MESSAGE PREVIEW BANNER */}
-          {editingMessage && (
-            <div className="px-3.5 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <Edit2 className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                <span className="font-bold text-blue-900">
-                  {lang === "bn" ? "বার্তা এডিট করছেন" : "Editing message"}
-                </span>
-                <span className="text-blue-700 truncate text-[11px]">
-                  {editingMessage.text}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingMessage(null);
-                  setText("");
-                }}
-                className="p-1 rounded-lg hover:bg-blue-100 text-blue-700 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* REPLYING-TO PREVIEW BANNER */}
-          {replyingTo && !editingMessage && (
-            <div className="px-3.5 py-2 bg-stone-50 border-b border-stone-200 flex items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <CornerUpLeft className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                <span className="font-bold text-emerald-950">
-                  {lang === "bn" ? "রিপ্লাই দিচ্ছেন" : "Replying to"}
-                </span>
-                <span className="font-semibold text-emerald-800">
-                  {getDisplayAuthorName(replyingTo)}:
-                </span>
-                <span className="text-stone-500 truncate text-[11px]">
-                  {replyingTo.text || (replyingTo.audioUrl ? "🎤 Voice Note" : "📷 Photo")}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReplyingTo(null)}
-                className="p-1 rounded-lg hover:bg-stone-200 text-stone-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* SELECTED IMAGE PREVIEW BANNER */}
-          {selectedImage && (
-            <div className="px-3.5 py-2.5 bg-stone-50 border-b border-stone-200 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-emerald-600/40 shadow-xs bg-white">
-                  <img
-                    src={selectedImage}
-                    alt="Selected preview"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="text-xs">
-                  <span className="font-bold text-emerald-950 block">
-                    {lang === "bn" ? "ছবি যুক্ত করা হয়েছে" : "Photo attached"}
-                  </span>
-                  <span className="text-[11px] text-stone-500">
-                    {lang === "bn"
-                      ? "সাথে কিছু লিখতে পারেন বা সরাসরি পাঠান"
-                      : "Add a caption or send directly"}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedImage(null)}
-                className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer transition"
-                title={lang === "bn" ? "ছবি সরান" : "Remove photo"}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* MENTION (@) AUTOCOMPLETE POPUP */}
-          {showMentionSuggestions && mentionSuggestions.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 max-h-52 overflow-y-auto bg-white border border-stone-200 rounded-t-2xl shadow-2xl z-30 divide-y divide-stone-100 mb-0 animate-in slide-in-from-bottom-2">
-              <div className="px-3 py-1.5 bg-emerald-950 text-white text-[11px] font-bold flex items-center justify-between">
-                <span>{lang === "bn" ? "কাউকে মেনশন করুন (@)" : "Mention someone (@)"}</span>
-                <span className="text-[10px] text-emerald-200">{mentionSuggestions.length} matches</span>
-              </div>
-              {mentionSuggestions.map((m) => {
-                const name = lang === "bn" ? m.nameBn : m.nameEn;
-                const handle =
-                  m.username ||
-                  m.nameEn.toLowerCase().replace(/[^a-z0-9]/g, "");
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => handleSelectMention(m)}
-                    className="w-full px-3 py-2 flex items-center gap-2.5 hover:bg-emerald-50 text-left transition cursor-pointer"
-                  >
-                    {m.photoUrl ? (
-                      <img
-                        src={m.photoUrl}
-                        alt=""
-                        className="w-7 h-7 rounded-full object-cover border border-stone-200"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-emerald-800 text-amber-300 font-bold text-[10px] flex items-center justify-center">
-                        {name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-stone-800 block truncate">
-                        {name}
-                      </span>
-                      <span className="text-[10px] text-stone-500 font-mono">
-                        @{handle}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* MAIN INPUT FORM */}
-          <form
-            onSubmit={handleSendOrUpdate}
-            className="p-2 sm:p-2.5 flex items-end gap-1.5 sm:gap-2 bg-white"
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-
-            {/* Photo Attachment Button */}
-            {!editingMessage && (
-              <button
-                type="button"
-                disabled={isCompressingImage || isSending}
-                onClick={() => fileInputRef.current?.click()}
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition cursor-pointer ${
-                  selectedImage
-                    ? "bg-emerald-900 text-amber-300"
-                    : "bg-stone-100 hover:bg-emerald-50 text-emerald-800 border border-stone-200/80"
-                }`}
-                title={lang === "bn" ? "ছবি পাঠান" : "Attach Photo"}
-              >
-                <ImagePlus className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
-            )}
-
-            {/* Voice Message Recorder (Hold/Lock/Cancel) */}
-            {!editingMessage && (
-              <VoiceRecorder
-                lang={lang}
-                disabled={!currentUsername || isSending}
-                onSendVoice={handleSendVoice}
-              />
-            )}
-
-            {/* Textarea */}
-            <div className="flex-1 min-w-0 relative">
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                value={text}
-                onChange={(e) => handleTextChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  isCompressingImage
-                    ? lang === "bn"
-                      ? "ছবি প্রস্তুত হচ্ছে..."
-                      : "Preparing photo..."
-                    : "Write message..."
-                }
-                className="w-full px-3.5 py-2.5 rounded-2xl border border-stone-200/90 bg-stone-50 focus:bg-white text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 resize-none max-h-32 leading-snug"
-              />
-            </div>
-
-            {/* Send Button */}
-            <button
-              type="submit"
-              disabled={(!text.trim() && !selectedImage) || isSending}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-amber-400 hover:bg-amber-300 text-emerald-950 flex items-center justify-center flex-shrink-0 shadow-xs disabled:opacity-40 transition cursor-pointer"
-              title={lang === "bn" ? "বার্তা পাঠান" : "Send Message"}
-            >
-              <Send className="w-4 h-4 stroke-[2.3]" />
-            </button>
-          </form>
-        </div>
+        <ChatInputBar
+          text={text}
+          onTextChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          onSubmit={handleSendOrUpdate}
+          selectedImage={selectedImage}
+          onClearSelectedImage={() => setSelectedImage(null)}
+          onSelectImage={handleImageSelect}
+          isCompressingImage={isCompressingImage}
+          isSending={isSending}
+          editingMessage={editingMessage}
+          onCancelEdit={() => {
+            setEditingMessage(null);
+            setText("");
+          }}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+          getDisplayAuthorName={getDisplayAuthorName}
+          activeTypingNames={activeTypingNames}
+          showMentionSuggestions={showMentionSuggestions}
+          mentionSuggestions={mentionSuggestions}
+          onSelectMention={handleSelectMention}
+          onSendVoice={handleSendVoice}
+          currentUsername={currentUsername}
+          lang={lang}
+        />
       ) : (
-        /* IN-PLACE QUICK LOGIN / NAME SETUP */
-        <div className="p-3.5 sm:p-4 border-t border-stone-200 bg-gradient-to-b from-stone-50 to-white z-20 flex-shrink-0">
-          {onQuickLogin ? (
-            <form onSubmit={handleQuickLoginSubmit} className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-950">
-                  <User className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>
-                    {lang === "bn"
-                      ? "চ্যাটে অংশ নিতে আপনার নাম লিখুন"
-                      : "Enter your name to join the chat"}
-                  </span>
-                </div>
-                <Link
-                  href="/profile"
-                  className="text-[11px] font-semibold text-emerald-800 hover:underline flex items-center gap-1"
-                >
-                  <LogIn className="w-3 h-3" />
-                  <span>
-                    {lang === "bn" ? "সম্পূর্ণ প্রোফাইল" : "Full Profile"}
-                  </span>
-                </Link>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  required
-                  value={quickName}
-                  onChange={(e) => setQuickName(e.target.value)}
-                  placeholder={
-                    lang === "bn"
-                      ? "আপনার নাম (যেমন: আব্দুল করিম)"
-                      : "Your Name (e.g. Abdul Karim)"
-                  }
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-stone-200 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                />
-                <input
-                  type="text"
-                  value={quickUsername}
-                  onChange={(e) => setQuickUsername(e.target.value)}
-                  placeholder={
-                    lang === "bn"
-                      ? "@ইউজারনেম (ঐচ্ছিক)"
-                      : "@username (optional)"
-                  }
-                  className="sm:w-40 px-3 py-2 rounded-xl border border-stone-200 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                />
-                <button
-                  type="submit"
-                  disabled={!quickName.trim() || isLoggingIn}
-                  className="px-4 py-2 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-bold text-xs sm:text-sm shadow-xs disabled:opacity-50 cursor-pointer transition flex items-center justify-center gap-1.5"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>
-                    {lang === "bn" ? "চ্যাট শুরু করুন" : "Start Chat"}
-                  </span>
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="text-center text-sm text-stone-600">
-              <Link
-                href="/profile"
-                className="inline-flex items-center gap-1.5 font-bold text-emerald-800 hover:text-emerald-950"
-              >
-                <LogIn className="w-4 h-4" />
-                {lang === "bn"
-                  ? "চ্যাট করতে প্রোফাইলে লগইন করুন"
-                  : "Log in from Profile to chat"}
-              </Link>
-            </div>
-          )}
-        </div>
+        <ChatQuickLoginForm lang={lang} onQuickLogin={onQuickLogin} />
       )}
 
-      {/* FULLSCREEN IMAGE LIGHTBOX WITH DOWNLOAD BUTTON */}
-      {lightboxImage && (
-        <div
-          onClick={() => setLightboxImage(null)}
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-        >
-          <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadImage(lightboxImage, `lightbox-${Date.now()}`);
-              }}
-              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white cursor-pointer transition flex items-center gap-1.5 text-xs font-bold"
-              title={lang === "bn" ? "গ্যালারিতে ডাউনলোড করুন" : "Save photo"}
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden xs:inline">
-                {lang === "bn" ? "ডাউনলোড" : "Save"}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setLightboxImage(null)}
-              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <img
-            src={lightboxImage}
-            alt="Full view"
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain"
-          />
-        </div>
-      )}
+      {/* FULLSCREEN IMAGE LIGHTBOX */}
+      <ChatLightbox
+        imageUrl={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+        onDownload={handleDownloadImage}
+        lang={lang}
+      />
 
-      {/* REACTION & ACTION SHEET MODAL */}
-      {activeMenuMessage && (
-        <div
-          onClick={() => setActiveMenuMessage(null)}
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex flex-col justify-end sm:justify-center items-center p-3 animate-in fade-in duration-150"
-        >
-          {/* Reaction Emojis Floating Pill */}
-          {currentUsername && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white/95 backdrop-blur-md rounded-full shadow-2xl border border-stone-200/90 px-3.5 py-2 flex items-center gap-2 sm:gap-3 mb-3 animate-in zoom-in-95 duration-150"
-            >
-              {REACTION_EMOJIS.map((emoji) => {
-                const hasReacted =
-                  currentUsername &&
-                  activeMenuMessage.reactions?.[emoji]?.includes(currentUsername);
-                return (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => {
-                      vibrateDevice([20]);
-                      handleToggleReaction(activeMenuMessage, emoji);
-                      setActiveMenuMessage(null);
-                    }}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-2xl hover:scale-125 active:scale-95 transition cursor-pointer ${
-                      hasReacted
-                        ? "bg-amber-100 ring-2 ring-amber-400 scale-110"
-                        : "hover:bg-stone-100"
-                    }`}
-                    title={emoji}
-                  >
-                    {emoji}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+      {/* ACTION SHEET / LONG-PRESS MODAL */}
+      <ChatActionSheet
+        message={activeMenuMessage}
+        onClose={() => setActiveMenuMessage(null)}
+        currentUsername={currentUsername}
+        isAdmin={isAdmin}
+        lang={lang}
+        onToggleReaction={handleToggleReaction}
+        onStartReply={(msg) => {
+          setEditingMessage(null);
+          setReplyingTo(msg);
+        }}
+        onDownloadImage={handleDownloadImage}
+        onOpenProfile={handleOpenProfile}
+        onCopyText={handleCopyText}
+        onTogglePin={handleTogglePin}
+        onStartEdit={(msg) => {
+          setReplyingTo(null);
+          setEditingMessage(msg);
+          setText(msg.text);
+        }}
+        onDeleteMessage={handleDeleteMessage}
+        getDisplayAuthorName={getDisplayAuthorName}
+      />
 
-          {/* Action List Card */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-stone-200 overflow-hidden divide-y divide-stone-100 text-sm animate-in slide-in-from-bottom-3 sm:zoom-in-95 duration-150"
-          >
-            {/* Target Message preview */}
-            <div className="px-4 py-2.5 bg-stone-50 text-stone-500 text-xs flex items-center justify-between">
-              <span className="font-bold text-stone-700 truncate max-w-[200px]">
-                {getDisplayAuthorName(activeMenuMessage)}
-              </span>
-              <span className="text-[11px] text-stone-400">
-                {formatMessageTime(activeMenuMessage.createdAt, lang)}
-              </span>
-            </div>
-
-            {/* 1. Reply */}
-            {currentUsername && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleStartReply(activeMenuMessage);
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center justify-between text-stone-800 font-semibold transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <CornerUpLeft className="w-4 h-4 text-emerald-700" />
-                  <span>{lang === "bn" ? "রিপ্লাই দিন" : "Reply"}</span>
-                </div>
-                <span className="text-[11px] text-stone-400 font-normal">
-                  {lang === "bn" ? "ডানে সোয়াইপ" : "Swipe right"}
-                </span>
-              </button>
-            )}
-
-            {/* 2. Download Image (if message has image) */}
-            {activeMenuMessage.imageUrl && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleDownloadImage(
-                    activeMenuMessage.imageUrl!,
-                    activeMenuMessage.id
-                  );
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
-              >
-                <Download className="w-4 h-4 text-emerald-700" />
-                <span>
-                  {lang === "bn" ? "ছবি ডাউনলোড করুন" : "Save Image"}
-                </span>
-              </button>
-            )}
-
-            {/* 3. View Sender Profile */}
-            <button
-              type="button"
-              onClick={() => {
-                handleOpenProfile(
-                  activeMenuMessage.authorUsername,
-                  getDisplayAuthorName(activeMenuMessage),
-                  activeMenuMessage.authorPhotoUrl
-                );
-                setActiveMenuMessage(null);
-              }}
-              className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
-            >
-              <User className="w-4 h-4 text-emerald-700" />
-              <span>
-                {lang === "bn"
-                  ? `${getDisplayAuthorName(activeMenuMessage)}-এর প্রোফাইল দেখুন`
-                  : `View ${getDisplayAuthorName(activeMenuMessage)}'s Profile`}
-              </span>
-            </button>
-
-            {/* 4. Copy Text */}
-            {activeMenuMessage.text && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleCopyText(activeMenuMessage);
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
-              >
-                <Copy className="w-4 h-4 text-stone-600" />
-                <span>{lang === "bn" ? "টেক্সট কপি করুন" : "Copy Text"}</span>
-              </button>
-            )}
-
-            {/* 5. Pin / Unpin */}
-            {currentUsername && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleTogglePin(activeMenuMessage);
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-stone-800 font-semibold transition cursor-pointer"
-              >
-                <Pin className="w-4 h-4 text-amber-600" />
-                <span>
-                  {activeMenuMessage.isPinned
-                    ? lang === "bn"
-                      ? "আনপিন করুন"
-                      : "Unpin Message"
-                    : lang === "bn"
-                    ? "পিন করুন"
-                    : "Pin Message"}
-                </span>
-              </button>
-            )}
-
-            {/* 6. Edit (if own) */}
-            {activeMenuMessage.authorUsername === currentUsername && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleStartEdit(activeMenuMessage);
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-stone-50 flex items-center gap-2.5 text-blue-700 font-semibold transition cursor-pointer"
-              >
-                <Edit2 className="w-4 h-4 text-blue-600" />
-                <span>{lang === "bn" ? "বার্তা এডিট করুন" : "Edit Message"}</span>
-              </button>
-            )}
-
-            {/* 7. Delete (if own or admin) */}
-            {(activeMenuMessage.authorUsername === currentUsername || isAdmin) && (
-              <button
-                type="button"
-                onClick={() => {
-                  handleDeleteMessage(activeMenuMessage);
-                  setActiveMenuMessage(null);
-                }}
-                className="w-full px-4 py-3 hover:bg-rose-50 flex items-center gap-2.5 text-rose-700 font-semibold transition cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4 text-rose-600" />
-                <span>{lang === "bn" ? "বার্তা মুছুন" : "Delete Message"}</span>
-              </button>
-            )}
-
-            {/* 8. Cancel */}
-            <button
-              type="button"
-              onClick={() => setActiveMenuMessage(null)}
-              className="w-full px-4 py-2.5 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-500 text-xs font-bold transition cursor-pointer"
-            >
-              {lang === "bn" ? "বাতিল" : "Cancel"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* GROUP INFORMATION & MEMBER MANAGEMENT MODAL */}
+      {/* GROUP INFORMATION & SETTINGS MODAL */}
       {groupSettings && (
         <GroupInfoModal
           isOpen={isGroupInfoOpen}
@@ -2241,7 +877,7 @@ export default function FamilyChat({
         }}
       />
 
-      {/* FAMILY GROUP CALL MODAL (AUDIO & VIDEO) */}
+      {/* FAMILY GROUP CALL MODAL */}
       <FamilyGroupCallModal
         isOpen={isGroupCallModalOpen}
         onClose={() => setIsGroupCallModalOpen(false)}
