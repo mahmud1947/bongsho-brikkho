@@ -67,7 +67,7 @@ interface FamilyChatProps {
   onQuickLogin?: (username: string, displayName: string) => Promise<void>;
 }
 
-const REACTION_EMOJIS = ["❤️", "👍", "🤲", "😊", "🎉", "🔥"];
+const REACTION_EMOJIS = ["❤️", "👍", "😂", "🤲", "😊", "🎉", "🔥"];
 
 const AVATAR_PALETTES = [
   "bg-emerald-700 text-amber-200",
@@ -885,9 +885,11 @@ export default function FamilyChat({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-sm sm:text-base truncate group-hover/hdr:text-amber-300 transition">
-                {lang === "bn"
-                  ? groupSettings?.groupNameBn || "পারিবারিক চ্যাট"
-                  : groupSettings?.groupNameEn || "Family Chat"}
+                {groupSettings?.groupNameEn && !/bongsho|বংশবৃক্ষ/i.test(groupSettings.groupNameEn)
+                  ? groupSettings.groupNameEn
+                  : groupSettings?.groupNameBn && !/bongsho|বংশবৃক্ষ/i.test(groupSettings.groupNameBn)
+                  ? groupSettings.groupNameBn
+                  : "Family Chat"}
               </h2>
 
               {/* Online Counter Badge */}

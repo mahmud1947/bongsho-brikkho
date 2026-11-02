@@ -46,8 +46,16 @@ export default function GroupInfoModal({
   onSelectMember,
 }: GroupInfoModalProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [nameBn, setNameBn] = useState(settings.groupNameBn || "বংশবৃক্ষ পরিবার চ্যাট");
-  const [nameEn, setNameEn] = useState(settings.groupNameEn || "Bongsho Family Chat");
+  const [nameBn, setNameBn] = useState(
+    settings.groupNameBn && !/bongsho|বংশবৃক্ষ/i.test(settings.groupNameBn)
+      ? settings.groupNameBn
+      : "Family Chat"
+  );
+  const [nameEn, setNameEn] = useState(
+    settings.groupNameEn && !/bongsho|বংশবৃক্ষ/i.test(settings.groupNameEn)
+      ? settings.groupNameEn
+      : "Family Chat"
+  );
   const [descBn, setDescBn] = useState(settings.descriptionBn || "পরিবারের সবার সাথে আনন্দ ও সুখ-দুঃখ ভাগাভাগি করার স্থান।");
   const [descEn, setDescEn] = useState(settings.descriptionEn || "Official communication space for all family members.");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);

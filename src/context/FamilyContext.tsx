@@ -43,9 +43,9 @@ export interface UpcomingBirthdayItem {
 }
 
 const defaultGroupSettings: GroupSettings = {
-  groupNameBn: "বংশবৃক্ষ পরিবার চ্যাট",
-  groupNameEn: "Bongsho Family Chat",
-  descriptionBn: "পরিবারের সবার সাথে আনন্দ ও সুখ-দুঃখ ভাগাভাগি করার স্থান।",
+  groupNameBn: "Family Chat",
+  groupNameEn: "Family Chat",
+  descriptionBn: "পরিবারের সবার সাথে কথা বলার ও যুক্ত থাকার স্থান।",
   descriptionEn: "Official communication space for all family members.",
   logoUrl: "",
   updatedAt: new Date().toISOString(),
@@ -381,7 +381,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
               tag: `bongsho-mention-${newest.id}`,
             });
           } else {
-            showBrowserNotification(`বংশবৃক্ষ চ্যাট: ${senderName}`, {
+            showBrowserNotification(`Family Chat: ${senderName}`, {
               body: bodyText,
               tag: `bongsho-chat-${newest.id}`,
             });
@@ -394,9 +394,13 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     const unsubGroup = onSnapshot(doc(db, "group_settings", "general"), (snap) => {
       if (snap.exists()) {
         const data = snap.data() as GroupSettings;
+        const nameBn = data.groupNameBn && !/bongsho|বংশবৃক্ষ/i.test(data.groupNameBn) ? data.groupNameBn : "Family Chat";
+        const nameEn = data.groupNameEn && !/bongsho|বংশবৃক্ষ/i.test(data.groupNameEn) ? data.groupNameEn : "Family Chat";
         setGroupSettings({
           ...defaultGroupSettings,
           ...data,
+          groupNameBn: nameBn,
+          groupNameEn: nameEn,
         });
       }
     });
