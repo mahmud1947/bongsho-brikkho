@@ -73,136 +73,145 @@ export default function Navbar() {
   ];
 
   const isRouteActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    if (href === "/") return pathname === "/" || pathname === "/bongsho-brikkho" || pathname === "/bongsho-brikkho/";
+    return pathname.startsWith(href) || pathname.startsWith(`/bongsho-brikkho${href}`);
   };
+
+  const isChatPage =
+    pathname === "/chat" ||
+    pathname === "/chat/" ||
+    pathname?.endsWith("/chat") ||
+    pathname?.endsWith("/chat/");
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-emerald-950/95 backdrop-blur-md border-b border-emerald-800/70 text-white shadow">
-        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-2.5 sm:py-3 gap-2">
-            {/* Brand & Online counter */}
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 flex items-center justify-center text-emerald-950 shadow">
-                  <TreePine className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.3]" />
-                </div>
-                <span className="text-base sm:text-xl font-bold text-amber-300">
-                  {lang === "bn" ? "বংশবৃক্ষ" : "Bongsho"}
-                </span>
-              </Link>
-
-              {/* Online Pill */}
-              <button
-                type="button"
-                onClick={() => setIsOnlineModalOpen(true)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-[11px] sm:text-xs font-bold text-emerald-200 transition cursor-pointer shadow-xs"
-                title={lang === "bn" ? "সক্রিয় সদস্যদের তালিকা দেখুন" : "View active online members"}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-pulse" />
-                <span className="text-emerald-300 font-extrabold">{onlineCount}</span>
-                <span className="text-emerald-200/80 font-medium hidden xs:inline">{lang === "bn" ? "অনলাইন" : "Online"}</span>
-              </button>
-            </div>
-
-            {/* Desktop Page Links */}
-            <nav className="hidden md:flex items-center gap-1.5">
-              {navItems.map((item) => {
-                const isActive = isRouteActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition ${
-                      isActive
-                        ? "bg-amber-400 text-emerald-950 shadow-sm"
-                        : "text-emerald-100 hover:bg-emerald-900"
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{lang === "bn" ? item.labelBn : item.labelEn}</span>
-                    {item.badge !== undefined && (
-                      <span
-                        className={`text-xs px-1.5 rounded-full font-bold ${
-                          isActive
-                            ? "bg-emerald-950 text-amber-300"
-                            : "bg-emerald-800 text-emerald-200"
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1.5">
-              {isAdmin && (
-                <button
-                  onClick={logoutAdmin}
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-400/20 border border-amber-400/50 text-xs font-bold text-amber-300 hover:bg-amber-400/30 cursor-pointer"
-                  title={lang === "bn" ? "অ্যাডমিন লগআউট করুন" : "Logout Admin"}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">{lang === "bn" ? "অ্যাডমিন" : "Admin"}</span>
-                </button>
-              )}
-              <button
-                onClick={() => setLang(lang === "bn" ? "en" : "bn")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs font-bold text-amber-300 cursor-pointer"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{lang === "bn" ? "EN" : "বাং"}</span>
-              </button>
-              <button
-                onClick={() => openAddModal(null)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs sm:text-sm shadow cursor-pointer"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>{lang === "bn" ? "অ্যাড" : "Add"}</span>
-              </button>
-
-              {/* Profile Icon beside Add button (upper right side) */}
-              <Link
-                href="/profile"
-                className={`relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl transition cursor-pointer shadow-xs ${
-                  isRouteActive("/profile")
-                    ? "bg-amber-400 text-emerald-950 ring-2 ring-amber-300/60"
-                    : "bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-amber-300"
-                }`}
-                title={
-                  currentUsername
-                    ? (lang === "bn" ? `@${currentUsername} এর প্রোফাইল` : `Profile (@${currentUsername})`)
-                    : (lang === "bn" ? "প্রোফাইল / সাইন আপ / লগইন" : "Profile / Login / Sign Up")
-                }
-              >
-                {currentUserProfile?.photoUrl ? (
-                  <img
-                    src={currentUserProfile.photoUrl}
-                    alt="Profile"
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                ) : currentUsername ? (
-                  <span className="font-black text-xs">
-                    {(currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername)
-                      .charAt(0)
-                      .toUpperCase()}
+      {/* Top Header: Hidden on Chat page to prevent double headers & duplicate online counters */}
+      {!isChatPage && (
+        <header className="sticky top-0 z-40 bg-emerald-950/95 backdrop-blur-md border-b border-emerald-800/70 text-white shadow">
+          <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-2.5 sm:py-3 gap-2">
+              {/* Brand & Online counter */}
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <Link href="/" className="flex items-center gap-2 group">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 flex items-center justify-center text-emerald-950 shadow">
+                    <TreePine className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.3]" />
+                  </div>
+                  <span className="text-base sm:text-xl font-bold text-amber-300">
+                    {lang === "bn" ? "বংশবৃক্ষ" : "Bongsho"}
                   </span>
-                ) : (
-                  <User className="w-4 h-4" />
+                </Link>
+
+                {/* Online Pill */}
+                <button
+                  type="button"
+                  onClick={() => setIsOnlineModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-[11px] sm:text-xs font-bold text-emerald-200 transition cursor-pointer shadow-xs"
+                  title={lang === "bn" ? "সক্রিয় সদস্যদের তালিকা দেখুন" : "View active online members"}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-pulse" />
+                  <span className="text-emerald-300 font-extrabold">{onlineCount}</span>
+                  <span className="text-emerald-200/80 font-medium hidden xs:inline">{lang === "bn" ? "অনলাইন" : "Online"}</span>
+                </button>
+              </div>
+
+              {/* Desktop Page Links */}
+              <nav className="hidden md:flex items-center gap-1.5">
+                {navItems.map((item) => {
+                  const isActive = isRouteActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition ${
+                        isActive
+                          ? "bg-amber-400 text-emerald-950 shadow-sm"
+                          : "text-emerald-100 hover:bg-emerald-900"
+                      }`}
+                    >
+                      {item.icon}
+                      <span>{lang === "bn" ? item.labelBn : item.labelEn}</span>
+                      {item.badge !== undefined && (
+                        <span
+                          className={`text-xs px-1.5 rounded-full font-bold ${
+                            isActive
+                              ? "bg-emerald-950 text-amber-300"
+                              : "bg-emerald-800 text-emerald-200"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1.5">
+                {isAdmin && (
+                  <button
+                    onClick={logoutAdmin}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-amber-400/20 border border-amber-400/50 text-xs font-bold text-amber-300 hover:bg-amber-400/30 cursor-pointer"
+                    title={lang === "bn" ? "অ্যাডমিন লগআউট করুন" : "Logout Admin"}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden sm:inline">{lang === "bn" ? "অ্যাডমিন" : "Admin"}</span>
+                  </button>
                 )}
-                {/* Active indicator dot if logged in */}
-                {currentUsername && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-950" />
-                )}
-              </Link>
+                <button
+                  onClick={() => setLang(lang === "bn" ? "en" : "bn")}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 border border-emerald-700 text-xs font-bold text-amber-300 cursor-pointer"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>{lang === "bn" ? "EN" : "বাং"}</span>
+                </button>
+                <button
+                  onClick={() => openAddModal(null)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs sm:text-sm shadow cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{lang === "bn" ? "অ্যাড" : "Add"}</span>
+                </button>
+
+                {/* Profile Icon beside Add button (upper right side) */}
+                <Link
+                  href="/profile"
+                  className={`relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl transition cursor-pointer shadow-xs ${
+                    isRouteActive("/profile")
+                      ? "bg-amber-400 text-emerald-950 ring-2 ring-amber-300/60"
+                      : "bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-amber-300"
+                  }`}
+                  title={
+                    currentUsername
+                      ? (lang === "bn" ? `@${currentUsername} এর প্রোফাইল` : `Profile (@${currentUsername})`)
+                      : (lang === "bn" ? "প্রোফাইল / সাইন আপ / লগইন" : "Profile / Login / Sign Up")
+                  }
+                >
+                  {currentUserProfile?.photoUrl ? (
+                    <img
+                      src={currentUserProfile.photoUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : currentUsername ? (
+                    <span className="font-black text-xs">
+                      {(currentUserProfile?.nameEn || currentUserProfile?.nameBn || currentUsername)
+                        .charAt(0)
+                        .toUpperCase()}
+                    </span>
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                  {/* Active indicator dot if logged in */}
+                  {currentUsername && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-950" />
+                  )}
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Mobile Bottom Navigation Links (5 items) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg">

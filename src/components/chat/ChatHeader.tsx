@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  ArrowLeft,
   Bell,
   BellOff,
   BellRing,
@@ -61,12 +62,21 @@ export default function ChatHeader({
 
   return (
     <header className="px-3.5 sm:px-6 py-2.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-2 border-b border-emerald-800/80 z-20 flex-shrink-0">
-      {/* Group Logo & Name Clickable */}
-      <div
-        onClick={onOpenGroupInfo}
-        className="flex items-center gap-2.5 sm:gap-3 min-w-0 cursor-pointer group/hdr hover:opacity-95 transition"
-        title={lang === "bn" ? "গ্রুপের বিস্তারিত ও সেটিংস" : "View group info"}
-      >
+      {/* Left: Back button + Group Logo & Name Clickable */}
+      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <Link
+          href="/"
+          className="p-1.5 -ml-1 sm:ml-0 rounded-xl bg-white/10 hover:bg-white/20 text-stone-200 hover:text-white transition cursor-pointer flex-shrink-0"
+          title={lang === "bn" ? "ফ্যামিলি ট্রিতে ফিরে যান" : "Back to Family Tree"}
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+
+        <div
+          onClick={onOpenGroupInfo}
+          className="flex items-center gap-2.5 sm:gap-3 min-w-0 cursor-pointer group/hdr hover:opacity-95 transition"
+          title={lang === "bn" ? "গ্রুপের বিস্তারিত ও সেটিংস" : "View group info"}
+        >
         <div className="relative flex-shrink-0">
           {groupSettings?.logoUrl ? (
             <img
@@ -108,6 +118,7 @@ export default function ChatHeader({
               : `${messagesCount} messages • Tap for group info`}
           </p>
         </div>
+      </div>
       </div>
 
       {/* Header Right Actions */}
