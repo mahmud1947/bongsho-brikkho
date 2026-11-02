@@ -23,15 +23,34 @@ import {
   FamilyMember,
   FamilyNotice,
   GalleryItem,
+  GroupSettings,
   Language,
   TimelineEvent,
   UserProfile,
+  UserPresence,
 } from "@/types/family";
 
 const USERNAME_KEY = "bongsho_current_username";
 const ADMIN_PASSWORD = "Mahmud2026";
 const ADMIN_STORAGE_KEY = "bongsho_is_admin";
 const LANG_STORAGE_KEY = "bongsho_preferred_language";
+
+export interface UpcomingBirthdayItem {
+  member: FamilyMember;
+  daysRemaining: number;
+  birthDateFormatted: string;
+  calculatedAge?: number;
+}
+
+const defaultGroupSettings: GroupSettings = {
+  groupNameBn: "বংশবৃক্ষ পরিবার চ্যাট",
+  groupNameEn: "Bongsho Family Chat",
+  descriptionBn: "পরিবারের সবার সাথে আনন্দ ও সুখ-দুঃখ ভাগাভাগি করার স্থান।",
+  descriptionEn: "Official communication space for all family members.",
+  logoUrl: "",
+  updatedAt: new Date().toISOString(),
+  updatedBy: "system",
+};
 
 interface FamilyContextType {
   lang: Language;
@@ -92,6 +111,22 @@ interface FamilyContextType {
   exportJson: () => void;
   importJson: (file: File) => void;
   resetData: () => Promise<void>;
+
+  // Real-time online members & presence
+  onlineCount: number;
+  onlineUsers: UserPresence[];
+
+  // Group settings & management
+  groupSettings: GroupSettings;
+  updateGroupSettings: (newSettings: Partial<GroupSettings>) => Promise<void>;
+
+  // Real-time typing status
+  typingUsers: Record<string, { displayName: string; timestamp: number }>;
+  setTypingStatus: (isTyping: boolean) => Promise<void>;
+
+  // Birthday reminder & celebration
+  todayBirthdays: Array<{ member: FamilyMember; age?: number }>;
+  upcomingBirthdays: UpcomingBirthdayItem[];
 }
 
 const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
@@ -112,6 +147,16 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [unseenChatCount, setUnseenChatCount] = useState<number>(0);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const currentUsernameRef = useRef<string | null>(null);
+
+  // Presence states
+  const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
+  const [onlineCount, setOnlineCount] = useState<number>(1);
+
+  // Group Settings state
+  const [groupSettings, setGroupSettings] = useState<GroupSettings>(defaultGroupSettings);
+
+  // Typing status state
+  const [typingUsers, setTypingUsers] = useState<Record<string, { displayName: string; timestamp: number }>>({});
 
   useEffect(() => {
     currentUsernameRef.current = currentUsername;
@@ -230,7 +275,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     const unsubMembers = onSnapshot(collection(db, "members"), (snap) => {
       const rawList = snap.docs.map((d) => {
         const item = d.data() as FamilyMember;
-        // Auto-heal gender for obvious female titles if improperly saved as male
         const isEvidentlyFemale =
           /বেগম|খাতুন|বিবি|বানু|আক্তার/i.test(item.nameBn || "") ||
           /begum|khatun|bibi|banu|akter|aktar/i.test(item.nameEn || "") ||
@@ -239,14 +283,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
 
         if (item.gender === "male" && isEvidentlyFemale) {
           item.gender = "female";
-          // Also persist the fix to Firestore seamlessly
           try {
             setDoc(doc(db, "members", item.id), { gender: "female" }, { merge: true }).catch(() => {});
           } catch (e) {}
         }
         return item;
       });
-      // Completely disconnect personal profiles from the tree
       const list = rawList.filter((m) => !m.id.startsWith("user-"));
       list.sort((a, b) => a.generation - b.generation || a.id.localeCompare(b.id));
       setMembers(list);
@@ -273,6 +315,37 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       setChatMessages(list);
 
+      const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "";
+
+      // Message Delivery & Read receipts update
+      if (user) {
+        const isOnChatPage = typeof window !== "undefined" && window.location.pathname.includes("/chat");
+        list.forEach((m) => {
+          if (m.authorUsername !== user) {
+            let needsUpdate = false;
+            const patch: Partial<FamilyChatMessage> = {};
+
+            // Mark delivered if not recorded yet
+            if (!m.deliveredTo || !m.deliveredTo[user]) {
+              patch.deliveredTo = { ...(m.deliveredTo || {}), [user]: new Date().toISOString() };
+              patch.status = "delivered";
+              needsUpdate = true;
+            }
+
+            // Mark read if user is currently looking at chat
+            if (isOnChatPage && (!m.readBy || !m.readBy[user])) {
+              patch.readBy = { ...(m.readBy || {}), [user]: new Date().toISOString() };
+              patch.status = "read";
+              needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+              setDoc(doc(db, "chat_messages", m.id), cleanData(patch), { merge: true }).catch(() => {});
+            }
+          }
+        });
+      }
+
       // Skip sound and notification on initial load
       if (isInitialChatSnapshot) {
         isInitialChatSnapshot = false;
@@ -282,7 +355,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       // Check for incoming new messages
       const addedChanges = snap.docChanges().filter((change) => change.type === "added");
       if (addedChanges.length > 0) {
-        const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "guest";
         const newOthersMessages = addedChanges
           .map((c) => c.doc.data() as FamilyChatMessage)
           .filter((m) => m.authorUsername !== user)
@@ -298,14 +370,85 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
             newest.authorNameEn ||
             `@${newest.authorUsername}`;
           const bodyText =
-            newest.text || (newest.imageUrl ? "📷 ছবি পাঠিয়েছেন" : "নতুন বার্তা");
+            newest.text ||
+            (newest.audioUrl ? "🎤 ভয়েস মেসেজ" : newest.imageUrl ? "📷 ছবি পাঠিয়েছেন" : "নতুন বার্তা");
 
-          showBrowserNotification(`বংশবৃক্ষ চ্যাট: ${senderName}`, {
-            body: bodyText,
-            tag: `bongsho-chat-${newest.id}`,
-          });
+          const isMentioned = Boolean(user && newest.mentions && newest.mentions.includes(user));
+
+          if (isMentioned) {
+            showBrowserNotification(`🔔 ${senderName} আপনাকে মেনশন করেছেন!`, {
+              body: bodyText,
+              tag: `bongsho-mention-${newest.id}`,
+            });
+          } else {
+            showBrowserNotification(`বংশবৃক্ষ চ্যাট: ${senderName}`, {
+              body: bodyText,
+              tag: `bongsho-chat-${newest.id}`,
+            });
+          }
         }
       }
+    });
+
+    // Subscribe to Group Settings
+    const unsubGroup = onSnapshot(doc(db, "group_settings", "general"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as GroupSettings;
+        setGroupSettings({
+          ...defaultGroupSettings,
+          ...data,
+        });
+      }
+    });
+
+    // Subscribe to Typing Status
+    const unsubTyping = onSnapshot(doc(db, "chat_typing", "active"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as { users?: Record<string, { displayName: string; timestamp: number }> };
+        const rawUsers = data.users || {};
+        const now = Date.now();
+        const activeTyping: Record<string, { displayName: string; timestamp: number }> = {};
+        const me = currentUsernameRef.current;
+
+        Object.entries(rawUsers).forEach(([uname, val]) => {
+          if (uname !== me && val && now - val.timestamp < 4500) {
+            activeTyping[uname] = val;
+          }
+        });
+        setTypingUsers(activeTyping);
+      }
+    });
+
+    // Subscribe to Real-Time Presence
+    const unsubPresence = onSnapshot(collection(db, "user_presence"), (snap) => {
+      const now = Date.now();
+      const list: UserPresence[] = [];
+      const seen = new Set<string>();
+
+      snap.docs.forEach((d) => {
+        const data = d.data() as UserPresence;
+        if (!data.username || seen.has(data.username)) return;
+        seen.add(data.username);
+
+        const lastSeenTime = new Date(data.lastSeen).getTime();
+        const isRecent = !isNaN(lastSeenTime) && now - lastSeenTime < 80000;
+        if (data.isOnline && isRecent) {
+          list.push(data);
+        }
+      });
+
+      const me = currentUsernameRef.current;
+      if (me && !seen.has(me)) {
+        list.push({
+          username: me,
+          displayName: me,
+          lastSeen: new Date().toISOString(),
+          isOnline: true,
+        });
+      }
+
+      setOnlineUsers(list);
+      setOnlineCount(Math.max(1, list.length));
     });
 
     return () => {
@@ -314,6 +457,9 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       unsubGallery();
       unsubNotices();
       unsubChatMessages();
+      unsubGroup();
+      unsubTyping();
+      unsubPresence();
     };
   }, []);
 
@@ -346,6 +492,107 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, [currentUsername]);
 
+  // Presence Heartbeat
+  const updatePresenceHeartbeat = useCallback(
+    async (isOnline: boolean = true) => {
+      const user = currentUsernameRef.current;
+      if (!user) return;
+      try {
+        const profile = currentUserProfile;
+        const name = profile?.nameBn || profile?.nameEn || `@${user}`;
+        const isMobile =
+          typeof navigator !== "undefined" &&
+          /android|iphone|ipad|mobile/i.test(navigator.userAgent);
+        const presenceData: UserPresence = {
+          username: user,
+          displayName: name,
+          photoUrl: profile?.photoUrl || "",
+          lastSeen: new Date().toISOString(),
+          isOnline,
+          platform: isMobile ? "mobile" : "desktop",
+        };
+        await setDoc(doc(db, "user_presence", user), cleanData(presenceData), { merge: true });
+      } catch (err) {
+        // silently catch offline/presence network error
+      }
+    },
+    [currentUserProfile]
+  );
+
+  useEffect(() => {
+    if (!currentUsername) return;
+
+    updatePresenceHeartbeat(true);
+
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        updatePresenceHeartbeat(true);
+      }
+    }, 32000);
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined") {
+        if (document.visibilityState === "visible") {
+          updatePresenceHeartbeat(true);
+        } else {
+          updatePresenceHeartbeat(false);
+        }
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      updatePresenceHeartbeat(false);
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentUsername, updatePresenceHeartbeat]);
+
+  // Group settings update handler
+  const updateGroupSettings = async (newSettings: Partial<GroupSettings>) => {
+    const updated: GroupSettings = {
+      ...groupSettings,
+      ...newSettings,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUsername || "admin",
+    };
+    setGroupSettings(updated);
+    await setDoc(doc(db, "group_settings", "general"), cleanData(updated), { merge: true });
+  };
+
+  // Typing status updater
+  const setTypingStatus = useCallback(
+    async (isTyping: boolean) => {
+      const user = currentUsernameRef.current;
+      if (!user) return;
+      try {
+        const name =
+          currentUserProfile?.nameBn || currentUserProfile?.nameEn || `@${user}`;
+        await setDoc(
+          doc(db, "chat_typing", "active"),
+          {
+            users: {
+              [user]: {
+                displayName: name,
+                timestamp: isTyping ? Date.now() : 0,
+              },
+            },
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        // ignore
+      }
+    },
+    [currentUserProfile]
+  );
+
   // Recalculate unseen messages when chat messages or current user changes
   useEffect(() => {
     calculateUnseen(chatMessages);
@@ -361,6 +608,118 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [markChatAsRead]);
+
+  // Birthday Calculation Hook
+  const { todayBirthdays, upcomingBirthdays } = useMemo(() => {
+    const todayList: Array<{ member: FamilyMember; age?: number }> = [];
+    const upcomingList: UpcomingBirthdayItem[] = [];
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentDay = now.getDate();
+
+    for (const m of members) {
+      if (m.isAlive === false) continue;
+      if (!m.birthYear || m.birthYear === "জানা নেই" || m.birthYear === "unknown") continue;
+
+      const parts = m.birthYear
+        .split("-")
+        .map((p) => parseInt(p.trim(), 10))
+        .filter((n) => !isNaN(n));
+      let y: number | undefined;
+      let month: number | undefined;
+      let day: number | undefined;
+
+      if (parts.length >= 3) {
+        if (parts[0] > 1900) {
+          y = parts[0];
+          month = parts[1];
+          day = parts[2];
+        } else {
+          y = parts[2];
+          month = parts[1];
+          day = parts[0];
+        }
+      } else {
+        continue;
+      }
+
+      if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) continue;
+
+      const calculatedAge = y ? currentYear - y : undefined;
+
+      // Check if today
+      if (month - 1 === currentMonth && day === currentDay) {
+        todayList.push({
+          member: m,
+          age: calculatedAge,
+        });
+        upcomingList.push({
+          member: m,
+          daysRemaining: 0,
+          birthDateFormatted: `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}`,
+          calculatedAge,
+        });
+      } else {
+        let nextBday = new Date(currentYear, month - 1, day);
+        if (nextBday < now) {
+          nextBday = new Date(currentYear + 1, month - 1, day);
+        }
+        const diffTime = nextBday.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays >= 1 && diffDays <= 30) {
+          const nextAge = y ? nextBday.getFullYear() - y : undefined;
+          upcomingList.push({
+            member: m,
+            daysRemaining: diffDays,
+            birthDateFormatted: `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}`,
+            calculatedAge: nextAge,
+          });
+        }
+      }
+    }
+
+    upcomingList.sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+    return { todayBirthdays: todayList, upcomingBirthdays: upcomingList };
+  }, [members]);
+
+  // Birthday Notification Check once per day
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const notifKey = `bongsho_bday_notif_${todayStr}`;
+    if (localStorage.getItem(notifKey)) return;
+
+    if (todayBirthdays.length > 0) {
+      const p = todayBirthdays[0];
+      const name = lang === "bn" ? p.member.nameBn : p.member.nameEn;
+      showBrowserNotification(`🎂 শুভ জন্মদিন: ${name}!`, {
+        body:
+          lang === "bn"
+            ? `আজ ${name}-এর শুভ জন্মদিন! পারিবারিক চ্যাটে শুভেচ্ছা জানান।`
+            : `Today is ${name}'s birthday! Wish them in the Family Chat.`,
+        tag: `bongsho-bday-${todayStr}`,
+      });
+      localStorage.setItem(notifKey, "true");
+    } else {
+      const tomorrowBday = upcomingBirthdays.find((b) => b.daysRemaining === 1);
+      if (tomorrowBday) {
+        const name =
+          lang === "bn" ? tomorrowBday.member.nameBn : tomorrowBday.member.nameEn;
+        showBrowserNotification(`🎉 আগামীকাল জন্মদিন: ${name}!`, {
+          body:
+            lang === "bn"
+              ? `আগামীকাল ${name}-এর শুভ জন্মদিন! প্রস্তুতি নিন।`
+              : `Tomorrow is ${name}'s birthday! Get ready to wish them.`,
+          tag: `bongsho-bday-advance-${todayStr}`,
+        });
+        localStorage.setItem(notifKey, "true");
+      }
+    }
+  }, [todayBirthdays, upcomingBirthdays, lang]);
 
   const saveUserProfile = async (profile: UserProfile) => {
     setCurrentUserProfile(profile);
@@ -393,7 +752,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     const cleanUser = raw.toLowerCase().replace(/^@/, "");
     const inputDigits = raw.replace(/\D/g, "");
 
-    // 1. If input contains digits (phone number attempt, >= 6 digits)
     if (inputDigits.length >= 6) {
       try {
         const snap = await getDocs(collection(db, "user_profiles"));
@@ -419,7 +777,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 2. Check if username document exists in user_profiles
     try {
       const docRef = doc(db, "user_profiles", cleanUser);
       const snap = await getDoc(docRef);
@@ -431,7 +788,6 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       console.warn("Error querying user_profiles by username:", e);
     }
 
-    // 3. Fallback: check localStorage for offline profiles
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -503,6 +859,9 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logoutUsername = () => {
+    if (currentUsername) {
+      setDoc(doc(db, "user_presence", currentUsername), { isOnline: false, lastSeen: new Date().toISOString() }, { merge: true }).catch(() => {});
+    }
     setCurrentUsername(null);
     setCurrentUserProfile(null);
     localStorage.removeItem(USERNAME_KEY);
@@ -558,7 +917,25 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendChatMessage = async (message: FamilyChatMessage) => {
-    await setDoc(doc(db, "chat_messages", message.id), cleanData(message));
+    const toSend = { ...message };
+
+    // Auto-detect @mentions if not explicitly provided
+    if (!toSend.mentions && toSend.text) {
+      const matched = toSend.text.match(/@([a-zA-Z0-9_]+)/g);
+      if (matched) {
+        toSend.mentions = Array.from(new Set(matched.map((m) => m.slice(1).toLowerCase())));
+      }
+    }
+
+    if (!toSend.status) {
+      toSend.status = "sent";
+    }
+
+    if (!toSend.deliveredTo && currentUsername) {
+      toSend.deliveredTo = { [currentUsername]: new Date().toISOString() };
+    }
+
+    await setDoc(doc(db, "chat_messages", toSend.id), cleanData(toSend));
   };
 
   const deleteChatMessage = async (id: string) => {
@@ -673,6 +1050,14 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         exportJson,
         importJson,
         resetData,
+        onlineCount,
+        onlineUsers,
+        groupSettings,
+        updateGroupSettings,
+        typingUsers,
+        setTypingStatus,
+        todayBirthdays,
+        upcomingBirthdays,
       }}
     >
       {children}

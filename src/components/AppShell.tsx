@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { usePathname } from "next/navigation";
+import React, { useMemo, useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Users, Layers, GitBranch, HeartPulse } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
 import MemberProfileModal from "@/components/MemberProfileModal";
 import MemberFormModal from "@/components/MemberFormModal";
 import AdminDeleteModal from "@/components/AdminDeleteModal";
+import BirthdayCelebrationModal from "@/components/BirthdayCelebrationModal";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [isBdayDismissed, setIsBdayDismissed] = useState(true);
+
   const {
     lang,
     members,
@@ -29,7 +33,37 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     deletePrompt,
     openDeletePrompt,
     closeDeletePrompt,
+    todayBirthdays,
   } = useFamily();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dismissed = sessionStorage.getItem(`bongsho_bday_modal_dismissed_${todayStr}`);
+    if (!dismissed) {
+      setIsBdayDismissed(false);
+    }
+  }, []);
+
+  const handleDismissBday = () => {
+    setIsBdayDismissed(true);
+    if (typeof window !== "undefined") {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      sessionStorage.setItem(`bongsho_bday_modal_dismissed_${todayStr}`, "true");
+    }
+  };
+
+  const handleSendBdayWish = (m: (typeof members)[0]) => {
+    handleDismissBday();
+    const name = lang === "bn" ? m.nameBn : m.nameEn;
+    const wishText = lang === "bn"
+      ? `🎂 শুভ জন্মদিন ${name}! আপনার সুস্বাস্থ্য ও দীর্ঘায়ু কামনা করি। 🎉`
+      : `🎂 Happy Birthday ${name}! Wishing you good health and prosperity. 🎉`;
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("bongsho_prefill_chat_text", wishText);
+    }
+    router.push("/chat");
+  };
 
   const stats = useMemo(() => {
     const generations = new Set(members.map((m) => m.generation)).size;
@@ -162,6 +196,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           onClose={closeDeletePrompt}
           onConfirm={deletePrompt.onConfirm}
           onLoginAdmin={loginAdmin}
+        />
+      )}
+
+      {/* Birthday Celebration Modal */}
+      {!isBdayDismissed && todayBirthdays.length > 0 && (
+        <BirthdayCelebrationModal
+          todayBirthdays={todayBirthdays}
+          lang={lang}
+          onClose={handleDismissBday}
+          onSendWish={handleSendBdayWish}
         />
       )}
     </div>

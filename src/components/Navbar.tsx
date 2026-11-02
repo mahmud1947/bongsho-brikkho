@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,9 +15,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
+import OnlineMembersModal from "@/components/OnlineMembersModal";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
   const {
     lang,
     setLang,
@@ -30,6 +32,9 @@ export default function Navbar() {
     logoutAdmin,
     currentUsername,
     currentUserProfile,
+    onlineCount,
+    onlineUsers,
+    setSelectedMember,
   } = useFamily();
 
   const navItems = [
@@ -77,15 +82,29 @@ export default function Navbar() {
       <header className="sticky top-0 z-40 bg-emerald-950/95 backdrop-blur-md border-b border-emerald-800/70 text-white shadow">
         <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-2.5 sm:py-3 gap-2">
-            {/* Brand */}
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-amber-400 flex items-center justify-center text-emerald-950 shadow">
-                <TreePine className="w-5 h-5 stroke-[2.3]" />
-              </div>
-              <span className="text-lg sm:text-xl font-bold text-amber-300">
-                {lang === "bn" ? "বংশবৃক্ষ" : "Bongsho"}
-              </span>
-            </Link>
+            {/* Brand & Online counter */}
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 flex items-center justify-center text-emerald-950 shadow">
+                  <TreePine className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.3]" />
+                </div>
+                <span className="text-base sm:text-xl font-bold text-amber-300">
+                  {lang === "bn" ? "বংশবৃক্ষ" : "Bongsho"}
+                </span>
+              </Link>
+
+              {/* Online Pill */}
+              <button
+                type="button"
+                onClick={() => setIsOnlineModalOpen(true)}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-700/80 text-[11px] sm:text-xs font-bold text-emerald-200 transition cursor-pointer shadow-xs"
+                title={lang === "bn" ? "সক্রিয় সদস্যদের তালিকা দেখুন" : "View active online members"}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/40 animate-pulse" />
+                <span className="text-emerald-300 font-extrabold">{onlineCount}</span>
+                <span className="text-emerald-200/80 font-medium hidden xs:inline">{lang === "bn" ? "অনলাইন" : "Online"}</span>
+              </button>
+            </div>
 
             {/* Desktop Page Links */}
             <nav className="hidden md:flex items-center gap-1.5">
@@ -222,6 +241,18 @@ export default function Navbar() {
           })}
         </div>
       </nav>
+
+      <OnlineMembersModal
+        isOpen={isOnlineModalOpen}
+        onClose={() => setIsOnlineModalOpen(false)}
+        onlineUsers={onlineUsers}
+        members={members}
+        lang={lang}
+        onSelectMember={(m) => {
+          setIsOnlineModalOpen(false);
+          setSelectedMember(m);
+        }}
+      />
     </>
   );
 }

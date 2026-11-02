@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { Search, MapPin, Briefcase, Phone, Filter, UserPlus, MessageSquare, Share2 } from "lucide-react";
 import { BloodGroup, FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
+import UpcomingBirthdaysList, { UpcomingBirthdayItem } from "@/components/UpcomingBirthdaysList";
 
 interface MemberDirectoryProps {
   members: FamilyMember[];
@@ -10,6 +11,8 @@ interface MemberDirectoryProps {
   lang: Language;
   onSelectMember: (m: FamilyMember) => void;
   onAddMember: () => void;
+  upcomingBirthdays?: UpcomingBirthdayItem[];
+  onSendWish?: (m: FamilyMember) => void;
 }
 
 const BLOOD_GROUPS: BloodGroup[] = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
@@ -20,6 +23,8 @@ export default function MemberDirectory({
   lang,
   onSelectMember,
   onAddMember,
+  upcomingBirthdays = [],
+  onSendWish,
 }: MemberDirectoryProps) {
   const [search, setSearch] = useState("");
   const [genFilter, setGenFilter] = useState("all");
@@ -60,6 +65,16 @@ export default function MemberDirectory({
 
   return (
     <div className="space-y-4">
+      {/* Upcoming Birthdays Section */}
+      {upcomingBirthdays && upcomingBirthdays.length > 0 && (
+        <UpcomingBirthdaysList
+          birthdays={upcomingBirthdays}
+          lang={lang}
+          onSendWish={onSendWish || (() => {})}
+          onSelectMember={onSelectMember}
+        />
+      )}
+
       {/* Compact Search & Filter Bar */}
       <div className="bg-white rounded-2xl border border-stone-200 p-3 shadow-sm space-y-2.5">
         <div className="flex items-center gap-2">

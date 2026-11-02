@@ -1,7 +1,45 @@
 /**
  * Browser Notification & Sound Utilities for Family Chat
- * 100% Free, Zero-dependency, Offline-compatible
+ * 100% Free, Zero-dependency, Mobile & Offline-compatible
  */
+
+// Shared AudioContext for cross-platform audio playback
+let sharedAudioCtx: AudioContext | null = null;
+let isAudioUnlocked = false;
+
+// Unlock AudioContext on mobile devices upon first user interaction
+export function unlockAudioContext() {
+  if (typeof window === "undefined" || isAudioUnlocked) return;
+
+  const unlock = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!sharedAudioCtx) {
+        sharedAudioCtx = new AudioCtx();
+      }
+      if (sharedAudioCtx.state === "suspended") {
+        sharedAudioCtx.resume();
+      }
+      isAudioUnlocked = true;
+    } catch {}
+
+    window.removeEventListener("touchstart", unlock);
+    window.removeEventListener("touchend", unlock);
+    window.removeEventListener("click", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+
+  window.addEventListener("touchstart", unlock, { passive: true });
+  window.addEventListener("touchend", unlock, { passive: true });
+  window.addEventListener("click", unlock, { passive: true });
+  window.addEventListener("keydown", unlock, { passive: true });
+}
+
+// Auto-register audio unlocker in browser
+if (typeof window !== "undefined") {
+  unlockAudioContext();
+}
 
 // Synthesize a crisp, pleasant notification chime using Web Audio API
 export function playNotificationChime() {
@@ -9,7 +47,14 @@ export function playNotificationChime() {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioCtx();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+
+    const ctx = sharedAudioCtx;
     const now = ctx.currentTime;
 
     const osc1 = ctx.createOscillator();
@@ -25,7 +70,7 @@ export function playNotificationChime() {
     osc2.frequency.setValueAtTime(1318.51, now + 0.08);
     osc2.frequency.exponentialRampToValueAtTime(1760, now + 0.25);
 
-    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.setValueAtTime(0.2, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
     osc1.connect(gain);
@@ -68,14 +113,19 @@ export async function requestChatNotificationPermission(): Promise<"granted" | "
   }
   try {
     const res = await Notification.requestPermission();
+    // If granted, unlock audio context immediately
+    if (res === "granted") {
+      playNotificationChime();
+      vibrateDevice([60]);
+    }
     return res;
   } catch {
     return "denied";
   }
 }
 
-// Show native OS notification
-export function showBrowserNotification(
+// Show native OS notification (Optimized for Android Chrome, PWA & Desktop)
+export async function showBrowserNotification(
   title: string,
   options: {
     body: string;
@@ -87,10 +137,40 @@ export function showBrowserNotification(
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
 
-  try {
-    const basePath = window.location.pathname.startsWith("/bongsho-brikkho") ? "/bongsho-brikkho" : "";
-    const iconUrl = options.icon || `${basePath}/icons/icon-192x192.png`;
+  const origin = window.location.origin;
+  const basePath = window.location.pathname.startsWith("/bongsho-brikkho") ? "/bongsho-brikkho" : "";
+  const iconUrl = options.icon
+    ? (options.icon.startsWith("http") ? options.icon : `${origin}${options.icon}`)
+    : `${origin}${basePath}/icons/icon-192x192.png`;
 
+  const notificationOptions = {
+    body: options.body,
+    icon: iconUrl,
+    badge: iconUrl,
+    tag: options.tag || "bongsho-chat-new",
+    renotify: true,
+    vibrate: [140, 70, 140],
+    data: {
+      url: `${basePath}/chat`,
+      ...(options.data || {}),
+    },
+  };
+
+  // 1. Try Service Worker showNotification FIRST (Required on Android / Mobile Chrome)
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && typeof reg.showNotification === "function") {
+        await reg.showNotification(title, notificationOptions);
+        return;
+      }
+    } catch (swErr) {
+      // SW notification fallback
+    }
+  }
+
+  // 2. Desktop fallback (Window Notification constructor)
+  try {
     const notif = new Notification(title, {
       body: options.body,
       icon: iconUrl,
@@ -108,19 +188,6 @@ export function showBrowserNotification(
       notif.close();
     };
   } catch {
-    // Fallback if Notification constructor fails (e.g. mobile chrome requires service worker showNotification)
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then((reg) => {
-        const basePath = window.location.pathname.startsWith("/bongsho-brikkho") ? "/bongsho-brikkho" : "";
-        const iconUrl = options.icon || `${basePath}/icons/icon-192x192.png`;
-        reg.showNotification(title, {
-          body: options.body,
-          icon: iconUrl,
-          badge: iconUrl,
-          tag: options.tag || "bongsho-chat-new",
-          data: { url: `${basePath}/chat` },
-        });
-      }).catch(() => {});
-    }
+    // Suppress illegal constructor error on mobile if SW already fired
   }
 }

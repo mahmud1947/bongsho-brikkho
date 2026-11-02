@@ -18,6 +18,13 @@ export default function ChatPage() {
     deleteChatMessage,
     openDeletePrompt,
     markChatAsRead,
+    onlineCount,
+    onlineUsers,
+    groupSettings,
+    updateGroupSettings,
+    typingUsers,
+    setTypingStatus,
+    setSelectedMember,
   } = useFamily();
 
   useEffect(() => {
@@ -33,6 +40,13 @@ export default function ChatPage() {
         currentUsername={currentUsername}
         currentUserProfile={currentUserProfile}
         isAdmin={isAdmin}
+        onlineCount={onlineCount}
+        onlineUsers={onlineUsers}
+        groupSettings={groupSettings}
+        onUpdateGroupSettings={updateGroupSettings}
+        typingUsers={typingUsers}
+        onTypingChange={setTypingStatus}
+        onSelectMemberProfile={(m) => setSelectedMember(m)}
         onMarkRead={markChatAsRead}
         onSend={sendChatMessage}
         onUpdate={sendChatMessage}

@@ -131,6 +131,8 @@ export interface FamilyChatMessage {
   id: string;
   text: string;
   imageUrl?: string;
+  audioUrl?: string; // Voice note Base64 or URL
+  audioDuration?: number; // Duration in seconds
   authorUsername: string;
   authorName: string;
   authorNameBn?: string;
@@ -146,6 +148,33 @@ export interface FamilyChatMessage {
     text: string;
   };
   reactions?: Record<string, string[]>;
+  mentions?: string[]; // Array of mentioned usernames e.g. ["mahmud", "riyad"]
+  status?: "sent" | "delivered" | "read";
+  readBy?: Record<string, string>; // { [username]: isoTimestamp }
+  deliveredTo?: Record<string, string>; // { [username]: isoTimestamp }
+}
+
+export interface UserPresence {
+  username: string;
+  displayName: string;
+  photoUrl?: string;
+  lastSeen: string;
+  isOnline: boolean;
+  platform?: "mobile" | "desktop";
+}
+
+export interface GroupSettings {
+  groupNameBn: string;
+  groupNameEn: string;
+  descriptionBn: string;
+  descriptionEn: string;
+  logoUrl?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface TypingState {
+  users: Record<string, { displayName: string; timestamp: number }>;
 }
 
 export function formatSocialUrl(raw?: string): string {
