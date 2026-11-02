@@ -117,3 +117,4 @@ export async function checkIfAccountExists(
 
   return { usernameExists, phoneExists };
 }
+

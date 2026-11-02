@@ -74,3 +74,4 @@ export const formatWhatsappUrl = (phoneOrWa?: string) => {
   }
   return `https://wa.me/${digits}`;
 };
+

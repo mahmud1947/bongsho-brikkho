@@ -67,3 +67,4 @@ export function formatMessageTime(isoDate: string, lang: Language): string {
     minute: "2-digit",
   });
 }
+

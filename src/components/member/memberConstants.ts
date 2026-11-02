@@ -60,3 +60,4 @@ export const MEMBER_MONTHS = [
   { val: "11", bn: "১১ (নভেম্বর)", en: "11 (Nov)", days: 30 },
   { val: "12", bn: "১২ (ডিসেম্বর)", en: "12 (Dec)", days: 31 },
 ];
+
