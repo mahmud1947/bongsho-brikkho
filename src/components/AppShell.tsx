@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Users, Layers, GitBranch, HeartPulse } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
+import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 
 // Dynamically import heavy modals to reduce initial load bundle size
 const MemberProfileModal = dynamic(() => import("@/components/MemberProfileModal"), { ssr: false });
@@ -97,11 +98,22 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/bongsho-brikkho/chat" ||
     pathname === "/bongsho-brikkho/chat/";
 
+  const isKeyboardOpen = useKeyboardOpen();
+
   return (
     <div
       className={`flex flex-col bg-[#f8f7f4] ${
-        isChatPage ? "h-[100dvh] overflow-hidden pb-14 md:pb-0" : "min-h-screen pb-20 md:pb-0"
+        isChatPage
+          ? isKeyboardOpen
+            ? "h-[100dvh] overflow-hidden pb-0 md:pb-0"
+            : "h-[100dvh] overflow-hidden pb-14 md:pb-0"
+          : "min-h-screen pb-20 md:pb-0"
       }`}
+      style={
+        isChatPage && isKeyboardOpen && typeof window !== "undefined" && window.visualViewport
+          ? { height: `${window.visualViewport.height}px` }
+          : undefined
+      }
     >
       <Navbar />
 

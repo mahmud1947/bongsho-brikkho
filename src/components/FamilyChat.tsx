@@ -23,6 +23,7 @@ import ChatMessageItem from "./chat/ChatMessageItem";
 import ChatInputBar from "./chat/ChatInputBar";
 import ChatQuickLoginForm from "./chat/ChatQuickLoginForm";
 import { formatDateLabel } from "./chat/chatUtils";
+import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 
 // Dynamically import modals & overlays to reduce initial load bundle
 const GroupInfoModal = dynamic(() => import("@/components/GroupInfoModal"), { ssr: false });
@@ -319,6 +320,18 @@ export default function FamilyChat({
   useEffect(() => {
     scrollToBottom("auto");
   }, []);
+
+  const isKeyboardOpen = useKeyboardOpen();
+
+  // When keyboard opens, smoothly ensure the latest messages are scrolled into view
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      const timer = setTimeout(() => {
+        scrollToBottom("smooth");
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isKeyboardOpen]);
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;

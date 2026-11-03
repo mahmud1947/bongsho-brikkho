@@ -16,10 +16,12 @@ import {
 } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import OnlineMembersModal from "@/components/OnlineMembersModal";
+import { useKeyboardOpen } from "@/hooks/useKeyboardOpen";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [isOnlineModalOpen, setIsOnlineModalOpen] = useState(false);
+  const isKeyboardOpen = useKeyboardOpen();
   const {
     lang,
     setLang,
@@ -213,8 +215,14 @@ export default function Navbar() {
         </header>
       )}
 
-      {/* Mobile Bottom Navigation Links (5 items) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg">
+      {/* Mobile Bottom Navigation Links (5 items): Completely hidden when software keyboard is open on Chat screen */}
+      <nav
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg transition-all duration-150 ${
+          isChatPage && isKeyboardOpen
+            ? "hidden pointer-events-none opacity-0 translate-y-full"
+            : "block opacity-100 translate-y-0"
+        }`}
+      >
         <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
           {navItems.map((item) => {
             const isActive = isRouteActive(item.href);

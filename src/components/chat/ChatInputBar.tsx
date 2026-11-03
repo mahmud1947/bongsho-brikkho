@@ -250,6 +250,11 @@ export default function ChatInputBar({
             value={text}
             onChange={(e) => onTextChange(e.target.value)}
             onKeyDown={onKeyDown}
+            onFocus={() => {
+              setTimeout(() => {
+                textareaRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+              }, 200);
+            }}
             placeholder={
               isCompressingImage
                 ? lang === "bn"
