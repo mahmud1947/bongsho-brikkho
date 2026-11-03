@@ -56,7 +56,7 @@ export default function ChatHeader({
   const groupTitle = "Family Chat";
 
   return (
-    <header className="px-2.5 sm:px-4 md:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-1.5 sm:gap-2 border-b border-emerald-800/80 z-20 flex-shrink-0 sticky top-0">
+    <header className="w-full px-2.5 sm:px-4 md:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-950 via-emerald-900 to-emerald-950 text-white flex items-center justify-between gap-1.5 sm:gap-2 border-b border-emerald-800/80 z-30 flex-shrink-0 sticky top-0">
       {/* Left: Back button + Group Logo & Name Clickable */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
         <Link

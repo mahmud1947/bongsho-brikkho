@@ -105,8 +105,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       className={`flex flex-col bg-[#f8f7f4] ${
         isChatPage
           ? isKeyboardOpen
-            ? "h-[100dvh] overflow-hidden pb-0 md:pb-0"
-            : "h-[100dvh] overflow-hidden pb-14 md:pb-0"
+            ? "fixed inset-0 w-full h-[100dvh] overflow-hidden pb-0 md:pb-0"
+            : "fixed inset-0 w-full h-[100dvh] overflow-hidden pb-14 md:pb-0"
           : "min-h-screen pb-20 md:pb-0"
       }`}
       style={

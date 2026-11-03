@@ -301,7 +301,13 @@ export default function FamilyChat({
   }, [filteredMessages, renderedCount, searchQuery, showPinnedOnly]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    endRef.current?.scrollIntoView({ behavior });
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior,
+      });
+    }
     setUnreadCount(0);
   };
 
@@ -318,14 +324,26 @@ export default function FamilyChat({
   }, [messages.length, showScrollBottom]);
 
   useEffect(() => {
-    scrollToBottom("auto");
+    // Reset window and document scroll to 0 to guarantee header stays at the top
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+    }
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, []);
 
   const isKeyboardOpen = useKeyboardOpen();
 
-  // When keyboard opens, smoothly ensure the latest messages are scrolled into view
+  // When keyboard opens, smoothly ensure the latest messages are scrolled into view within the container
   useEffect(() => {
     if (isKeyboardOpen) {
+      if (typeof window !== "undefined") {
+        window.scrollTo(0, 0);
+      }
       const timer = setTimeout(() => {
         scrollToBottom("smooth");
       }, 150);
@@ -353,9 +371,16 @@ export default function FamilyChat({
   };
 
   const scrollToMessage = (msgId: string) => {
-    const el = document.getElementById(`chat-msg-${msgId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const container = scrollContainerRef.current;
+    const msgEl = document.getElementById(`chat-msg-${msgId}`);
+    if (container && msgEl) {
+      const containerRect = container.getBoundingClientRect();
+      const msgRect = msgEl.getBoundingClientRect();
+      const offset = msgRect.top - containerRect.top + container.scrollTop;
+      container.scrollTo({
+        top: Math.max(0, offset - container.clientHeight / 2),
+        behavior: "smooth",
+      });
       setHighlightedId(msgId);
       setTimeout(() => setHighlightedId((prev) => (prev === msgId ? null : prev)), 2000);
     }
