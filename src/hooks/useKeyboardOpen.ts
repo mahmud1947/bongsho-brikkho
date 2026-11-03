@@ -20,23 +20,16 @@ export function useKeyboardOpen(): boolean {
         activeEl instanceof HTMLTextAreaElement ||
         (activeEl instanceof HTMLElement && activeEl.isContentEditable);
 
+      if (!isInputActive) {
+        setIsKeyboardOpen(false);
+        return;
+      }
+
       if (window.visualViewport) {
         const heightDiff = window.innerHeight - window.visualViewport.height;
-        // On Android/iOS, keyboards take up 200px - 400px of vertical space
-        if (heightDiff > 130) {
-          setIsKeyboardOpen(true);
-          return;
-        }
-        if (isInputActive && heightDiff > 60) {
-          setIsKeyboardOpen(true);
-          return;
-        }
-        if (!isInputActive || heightDiff < 50) {
-          setIsKeyboardOpen(false);
-          return;
-        }
+        setIsKeyboardOpen(heightDiff > 60 || isInputActive);
       } else {
-        setIsKeyboardOpen(isInputActive);
+        setIsKeyboardOpen(true);
       }
     };
 

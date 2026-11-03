@@ -33,7 +33,7 @@ export default function ChatPage() {
   }, [markChatAsRead, chatMessages.length]);
 
   return (
-    <div className="w-full h-full flex flex-col min-h-0 flex-1 overflow-hidden">
+    <div className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
       <FamilyChat
         messages={chatMessages}
         isLoading={isChatLoading}

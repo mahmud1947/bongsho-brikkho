@@ -217,7 +217,7 @@ export default function Navbar() {
 
       {/* Mobile Bottom Navigation Links (5 items): Completely hidden when software keyboard is open on Chat screen */}
       <nav
-        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg transition-all duration-150 ${
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-40 bg-emerald-950/98 backdrop-blur-lg border-t border-emerald-800 px-1.5 py-1.5 shadow-lg h-14 transition-all duration-150 ${
           isChatPage && isKeyboardOpen
             ? "hidden pointer-events-none opacity-0 translate-y-full"
             : "block opacity-100 translate-y-0"

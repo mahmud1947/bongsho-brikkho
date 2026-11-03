@@ -104,14 +104,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className={`flex flex-col bg-[#f8f7f4] ${
         isChatPage
-          ? isKeyboardOpen
-            ? "fixed inset-0 w-full h-[100dvh] overflow-hidden pb-0 md:pb-0"
-            : "fixed inset-0 w-full h-[100dvh] overflow-hidden pb-14 md:pb-0"
+          ? "fixed inset-0 w-full overflow-hidden"
           : "min-h-screen pb-20 md:pb-0"
       }`}
       style={
-        isChatPage && isKeyboardOpen && typeof window !== "undefined" && window.visualViewport
-          ? { height: `${window.visualViewport.height}px` }
+        isChatPage
+          ? {
+              height:
+                isKeyboardOpen && typeof window !== "undefined" && window.visualViewport
+                  ? `${window.visualViewport.height}px`
+                  : "100dvh",
+            }
           : undefined
       }
     >
@@ -160,7 +163,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className={
           isChatPage
-            ? "flex-1 w-full flex flex-col min-h-0 overflow-hidden p-0 m-0 max-w-none"
+            ? isKeyboardOpen
+              ? "flex-1 w-full flex flex-col min-h-0 overflow-hidden p-0 m-0 pb-0 md:pb-0 max-w-none"
+              : "flex-1 w-full flex flex-col min-h-0 overflow-hidden p-0 m-0 pb-14 md:pb-0 max-w-none"
             : "flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6"
         }
       >
