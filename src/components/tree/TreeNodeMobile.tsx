@@ -25,7 +25,7 @@ interface TreeNodeMobileProps {
   onAddChildToMember: (parentMember: FamilyMember | null) => void;
 }
 
-export default function TreeNodeMobile({
+const TreeNodeMobile = React.memo(function TreeNodeMobile({
   member,
   childrenMap,
   collapsedIds,
@@ -195,5 +195,7 @@ export default function TreeNodeMobile({
       )}
     </div>
   );
-}
+});
+
+export default TreeNodeMobile;
 

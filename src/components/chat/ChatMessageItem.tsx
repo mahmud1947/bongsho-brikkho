@@ -46,7 +46,7 @@ interface ChatMessageItemProps {
   onOpenCallRoom: () => void;
 }
 
-export default function ChatMessageItem({
+function ChatMessageItemComponent({
   message,
   isMine,
   isGroupedWithPrev,
@@ -481,4 +481,59 @@ export default function ChatMessageItem({
     </div>
   );
 }
+
+function areChatMessageItemPropsEqual(
+  prev: ChatMessageItemProps,
+  next: ChatMessageItemProps
+): boolean {
+  if (prev.message !== next.message) {
+    if (
+      prev.message.id !== next.message.id ||
+      prev.message.text !== next.message.text ||
+      prev.message.status !== next.message.status ||
+      prev.message.isPinned !== next.message.isPinned ||
+      prev.message.audioUrl !== next.message.audioUrl ||
+      prev.message.imageUrl !== next.message.imageUrl ||
+      JSON.stringify(prev.message.reactions) !== JSON.stringify(next.message.reactions) ||
+      JSON.stringify(prev.message.readBy) !== JSON.stringify(next.message.readBy) ||
+      JSON.stringify(prev.message.deliveredTo) !== JSON.stringify(next.message.deliveredTo)
+    ) {
+      return false;
+    }
+  }
+
+  if (prev.isMine !== next.isMine) return false;
+  if (prev.isGroupedWithPrev !== next.isGroupedWithPrev) return false;
+  if (prev.isGroupedWithNext !== next.isGroupedWithNext) return false;
+  if (prev.authorDisplayName !== next.authorDisplayName) return false;
+  if (prev.lang !== next.lang) return false;
+  if (prev.currentUsername !== next.currentUsername) return false;
+
+  const msgId = prev.message.id;
+  const prevIsSwiping = prev.swipingMsgId === msgId;
+  const nextIsSwiping = next.swipingMsgId === msgId;
+  if (prevIsSwiping !== nextIsSwiping) return false;
+  if (prevIsSwiping && prev.swipeOffset !== next.swipeOffset) return false;
+
+  const prevIsHighlighted = prev.highlightedId === msgId;
+  const nextIsHighlighted = next.highlightedId === msgId;
+  if (prevIsHighlighted !== nextIsHighlighted) return false;
+
+  const prevIsCopied = prev.copiedId === msgId;
+  const nextIsCopied = next.copiedId === msgId;
+  if (prevIsCopied !== nextIsCopied) return false;
+
+  const prevIsDownloading = prev.downloadingImageId === msgId;
+  const nextIsDownloading = next.downloadingImageId === msgId;
+  if (prevIsDownloading !== nextIsDownloading) return false;
+
+  if (prev.matchedMember !== next.matchedMember) {
+    if (prev.matchedMember?.id !== next.matchedMember?.id) return false;
+  }
+
+  return true;
+}
+
+const ChatMessageItem = React.memo(ChatMessageItemComponent, areChatMessageItemPropsEqual);
+export default ChatMessageItem;
 

@@ -26,7 +26,7 @@ interface TreeNodeCanvasProps {
   onAddChildToMember: (parentMember: FamilyMember | null) => void;
 }
 
-export default function TreeNodeCanvas({
+const TreeNodeCanvas = React.memo(function TreeNodeCanvas({
   member,
   childrenMap,
   collapsedIds,
@@ -230,5 +230,7 @@ export default function TreeNodeCanvas({
       )}
     </div>
   );
-}
+});
+
+export default TreeNodeCanvas;
 

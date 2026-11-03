@@ -13,6 +13,9 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
+  query,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { initialBranches } from "@/data/initialFamilyData";
@@ -311,7 +314,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     });
 
     let isInitialChatSnapshot = true;
-    const unsubChatMessages = onSnapshot(collection(db, "chat_messages"), (snap) => {
+    const chatQuery = query(
+      collection(db, "chat_messages"),
+      orderBy("createdAt", "desc"),
+      limit(150)
+    );
+    const unsubChatMessages = onSnapshot(chatQuery, (snap) => {
       const list = snap.docs.map((d) => d.data() as FamilyChatMessage);
       list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       setChatMessages(list);
@@ -420,7 +428,18 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
             activeTyping[uname] = val;
           }
         });
-        setTypingUsers(activeTyping);
+        setTypingUsers((prev) => {
+          const prevKeys = Object.keys(prev);
+          const newKeys = Object.keys(activeTyping);
+          if (prevKeys.length === 0 && newKeys.length === 0) return prev;
+          if (
+            prevKeys.length === newKeys.length &&
+            newKeys.every((k) => prev[k] && prev[k].displayName === activeTyping[k].displayName)
+          ) {
+            return prev;
+          }
+          return activeTyping;
+        });
       }
     });
 

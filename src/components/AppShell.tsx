@@ -1,14 +1,17 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { Users, Layers, GitBranch, HeartPulse } from "lucide-react";
 import { useFamily } from "@/context/FamilyContext";
 import Navbar from "@/components/Navbar";
-import MemberProfileModal from "@/components/MemberProfileModal";
-import MemberFormModal from "@/components/MemberFormModal";
-import AdminDeleteModal from "@/components/AdminDeleteModal";
-import BirthdayCelebrationModal from "@/components/BirthdayCelebrationModal";
+
+// Dynamically import heavy modals to reduce initial load bundle size
+const MemberProfileModal = dynamic(() => import("@/components/MemberProfileModal"), { ssr: false });
+const MemberFormModal = dynamic(() => import("@/components/MemberFormModal"), { ssr: false });
+const AdminDeleteModal = dynamic(() => import("@/components/AdminDeleteModal"), { ssr: false });
+const BirthdayCelebrationModal = dynamic(() => import("@/components/BirthdayCelebrationModal"), { ssr: false });
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();

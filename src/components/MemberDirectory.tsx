@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Search, MapPin, Briefcase, Phone, Filter, UserPlus, MessageSquare, Share2 } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, MapPin, Briefcase, Phone, Filter, UserPlus, MessageSquare, Share2, ChevronDown } from "lucide-react";
 import { BloodGroup, FamilyBranch, FamilyMember, Language, formatSocialUrl } from "@/types/family";
 import UpcomingBirthdaysList, { UpcomingBirthdayItem } from "@/components/UpcomingBirthdaysList";
 
@@ -30,6 +30,12 @@ export default function MemberDirectory({
   const [genFilter, setGenFilter] = useState("all");
   const [bloodFilter, setBloodFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [displayCount, setDisplayCount] = useState(24);
+
+  // Reset pagination when filter or search changes
+  useEffect(() => {
+    setDisplayCount(24);
+  }, [search, genFilter, bloodFilter]);
 
   const formatWhatsappUrl = (phoneOrWa?: string) => {
     if (!phoneOrWa) return "";
@@ -140,103 +146,122 @@ export default function MemberDirectory({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((m) => (
-            <div
-              key={m.id}
-              onClick={() => onSelectMember(m)}
-              className="bg-white rounded-2xl border border-stone-200 hover:border-emerald-500 p-4 shadow-sm transition cursor-pointer space-y-2.5"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900">
-                    G{m.generation}
-                  </span>
-                  {!m.isAlive && (
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-700 border border-stone-300">
-                      {lang === "bn" ? "প্রয়াত" : "Late"}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.slice(0, displayCount).map((m) => (
+              <div
+                key={m.id}
+                onClick={() => onSelectMember(m)}
+                className="bg-white rounded-2xl border border-stone-200 hover:border-emerald-500 p-4 shadow-sm transition cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-900">
+                      G{m.generation}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {m.bloodGroup !== "Unknown" && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700">
-                      🩸 {m.bloodGroup}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-stone-900 text-sm sm:text-base truncate">
-                  {lang === "bn" ? m.nameBn : m.nameEn}
-                </h3>
-                {(m.nicknameBn || m.nicknameEn) && (
-                  <p className="text-xs text-amber-700 font-semibold">
-                    {lang === "bn" ? m.nicknameBn : m.nicknameEn}
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-stone-100 space-y-1 text-xs text-stone-600">
-                <div className="flex items-center gap-1.5 truncate">
-                  <Briefcase className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                  <span className="truncate">{lang === "bn" ? m.professionBn : m.professionEn}</span>
-                </div>
-                <div className="flex items-center gap-1.5 truncate">
-                  <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                  <span className="truncate">
-                    {lang === "bn"
-                      ? [m.locationBn, m.countryBn].filter((x) => x && x !== "জানা নেই" && x !== "-").join(", ") || m.locationBn
-                      : [m.locationEn, m.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || m.locationEn}
-                  </span>
-                </div>
-                {(m.phone || m.whatsapp || m.socialLink) && (
-                  <div className="flex items-center justify-between gap-1 flex-wrap pt-1 text-stone-700 font-medium">
-                    {m.phone ? (
-                      <a
-                        href={`tel:${m.phone.replace(/\s+/g, "")}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-1.5 text-emerald-800 font-bold hover:underline"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                        <span>{m.phone}</span>
-                      </a>
-                    ) : <div />}
-
-                    <div className="flex items-center gap-1.5">
-                      {formatWhatsappUrl(m.whatsapp || m.phone) && (
-                        <a
-                          href={formatWhatsappUrl(m.whatsapp || m.phone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-[11px] border border-green-200"
-                          title="WhatsApp Chat"
-                        >
-                          <MessageSquare className="w-3 h-3 text-green-600" />
-                          <span>WhatsApp</span>
-                        </a>
-                      )}
-                      {m.socialLink && (
-                        <a
-                          href={formatSocialUrl(m.socialLink)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200"
-                          title="Social Link"
-                        >
-                          <Share2 className="w-3 h-3 text-blue-600" />
-                          <span>Social</span>
-                        </a>
-                      )}
-                    </div>
+                    {!m.isAlive && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-200 text-stone-700 border border-stone-300">
+                        {lang === "bn" ? "প্রয়াত" : "Late"}
+                      </span>
+                    )}
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5">
+                    {m.bloodGroup !== "Unknown" && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700">
+                        🩸 {m.bloodGroup}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-bold text-stone-900 text-sm sm:text-base truncate">
+                    {lang === "bn" ? m.nameBn : m.nameEn}
+                  </h3>
+                  {(m.nicknameBn || m.nicknameEn) && (
+                    <p className="text-xs text-amber-700 font-semibold">
+                      {lang === "bn" ? m.nicknameBn : m.nicknameEn}
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-stone-100 space-y-1 text-xs text-stone-600">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Briefcase className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                    <span className="truncate">{lang === "bn" ? m.professionBn : m.professionEn}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <MapPin className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <span className="truncate">
+                      {lang === "bn"
+                        ? [m.locationBn, m.countryBn].filter((x) => x && x !== "জানা নেই" && x !== "-").join(", ") || m.locationBn
+                        : [m.locationEn, m.countryEn].filter((x) => x && x !== "Unknown" && x !== "-").join(", ") || m.locationEn}
+                    </span>
+                  </div>
+                  {(m.phone || m.whatsapp || m.socialLink) && (
+                    <div className="flex items-center justify-between gap-1 flex-wrap pt-1 text-stone-700 font-medium">
+                      {m.phone ? (
+                        <a
+                          href={`tel:${m.phone.replace(/\s+/g, "")}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1.5 text-emerald-800 font-bold hover:underline"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                          <span>{m.phone}</span>
+                        </a>
+                      ) : <div />}
+
+                      <div className="flex items-center gap-1.5">
+                        {formatWhatsappUrl(m.whatsapp || m.phone) && (
+                          <a
+                            href={formatWhatsappUrl(m.whatsapp || m.phone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-[11px] border border-green-200"
+                            title="WhatsApp Chat"
+                          >
+                            <MessageSquare className="w-3 h-3 text-green-600" />
+                            <span>WhatsApp</span>
+                          </a>
+                        )}
+                        {m.socialLink && (
+                          <a
+                            href={formatSocialUrl(m.socialLink)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-[11px] border border-blue-200"
+                            title="Social Link"
+                          >
+                            <Share2 className="w-3 h-3 text-blue-600" />
+                            <span>Social</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {filtered.length > displayCount && (
+            <div className="flex justify-center pt-2 pb-4">
+              <button
+                type="button"
+                onClick={() => setDisplayCount((prev) => prev + 24)}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 text-sm font-bold shadow-xs transition active:scale-95 cursor-pointer"
+              >
+                <ChevronDown className="w-4 h-4 text-emerald-700" />
+                <span>
+                  {lang === "bn"
+                    ? `আরও দেখুন (বাকি ${filtered.length - displayCount} জন)`
+                    : `Load More (${filtered.length - displayCount} remaining)`}
+                </span>
+              </button>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

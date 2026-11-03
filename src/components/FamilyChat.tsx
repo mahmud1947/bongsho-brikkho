@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { ArrowDown, Check, MessageCircle } from "lucide-react";
 import {
   FamilyChatMessage,
@@ -16,17 +17,19 @@ import {
   requestChatNotificationPermission,
   vibrateDevice,
 } from "@/lib/notificationUtils";
-import GroupInfoModal from "@/components/GroupInfoModal";
-import OnlineMembersModal from "@/components/OnlineMembersModal";
-import FamilyGroupCallModal from "@/components/FamilyGroupCallModal";
 import ChatHeader from "./chat/ChatHeader";
 import ChatPinnedBanner from "./chat/ChatPinnedBanner";
 import ChatMessageItem from "./chat/ChatMessageItem";
 import ChatInputBar from "./chat/ChatInputBar";
 import ChatQuickLoginForm from "./chat/ChatQuickLoginForm";
-import ChatActionSheet from "./chat/ChatActionSheet";
-import ChatLightbox from "./chat/ChatLightbox";
 import { formatDateLabel } from "./chat/chatUtils";
+
+// Dynamically import modals & overlays to reduce initial load bundle
+const GroupInfoModal = dynamic(() => import("@/components/GroupInfoModal"), { ssr: false });
+const OnlineMembersModal = dynamic(() => import("@/components/OnlineMembersModal"), { ssr: false });
+const FamilyGroupCallModal = dynamic(() => import("@/components/FamilyGroupCallModal"), { ssr: false });
+const ChatActionSheet = dynamic(() => import("./chat/ChatActionSheet"), { ssr: false });
+const ChatLightbox = dynamic(() => import("./chat/ChatLightbox"), { ssr: false });
 
 interface FamilyChatProps {
   messages: FamilyChatMessage[];
@@ -814,40 +817,44 @@ export default function FamilyChat({
       )}
 
       {/* FULLSCREEN IMAGE LIGHTBOX */}
-      <ChatLightbox
-        imageUrl={lightboxImage}
-        onClose={() => setLightboxImage(null)}
-        onDownload={handleDownloadImage}
-        lang={lang}
-      />
+      {lightboxImage && (
+        <ChatLightbox
+          imageUrl={lightboxImage}
+          onClose={() => setLightboxImage(null)}
+          onDownload={handleDownloadImage}
+          lang={lang}
+        />
+      )}
 
       {/* ACTION SHEET / LONG-PRESS MODAL */}
-      <ChatActionSheet
-        message={activeMenuMessage}
-        onClose={() => setActiveMenuMessage(null)}
-        currentUsername={currentUsername}
-        isAdmin={isAdmin}
-        lang={lang}
-        onToggleReaction={handleToggleReaction}
-        onStartReply={(msg) => {
-          setEditingMessage(null);
-          setReplyingTo(msg);
-        }}
-        onDownloadImage={handleDownloadImage}
-        onOpenProfile={handleOpenProfile}
-        onCopyText={handleCopyText}
-        onTogglePin={handleTogglePin}
-        onStartEdit={(msg) => {
-          setReplyingTo(null);
-          setEditingMessage(msg);
-          setText(msg.text);
-        }}
-        onDeleteMessage={handleDeleteMessage}
-        getDisplayAuthorName={getDisplayAuthorName}
-      />
+      {activeMenuMessage && (
+        <ChatActionSheet
+          message={activeMenuMessage}
+          onClose={() => setActiveMenuMessage(null)}
+          currentUsername={currentUsername}
+          isAdmin={isAdmin}
+          lang={lang}
+          onToggleReaction={handleToggleReaction}
+          onStartReply={(msg) => {
+            setEditingMessage(null);
+            setReplyingTo(msg);
+          }}
+          onDownloadImage={handleDownloadImage}
+          onOpenProfile={handleOpenProfile}
+          onCopyText={handleCopyText}
+          onTogglePin={handleTogglePin}
+          onStartEdit={(msg) => {
+            setReplyingTo(null);
+            setEditingMessage(msg);
+            setText(msg.text);
+          }}
+          onDeleteMessage={handleDeleteMessage}
+          getDisplayAuthorName={getDisplayAuthorName}
+        />
+      )}
 
       {/* GROUP INFORMATION & SETTINGS MODAL */}
-      {groupSettings && (
+      {groupSettings && isGroupInfoOpen && (
         <GroupInfoModal
           isOpen={isGroupInfoOpen}
           onClose={() => setIsGroupInfoOpen(false)}
@@ -865,27 +872,31 @@ export default function FamilyChat({
       )}
 
       {/* ONLINE MEMBERS MODAL */}
-      <OnlineMembersModal
-        isOpen={isOnlineModalOpen}
-        onClose={() => setIsOnlineModalOpen(false)}
-        onlineUsers={onlineUsers}
-        members={members}
-        lang={lang}
-        onSelectMember={(m) => {
-          setIsOnlineModalOpen(false);
-          onSelectMemberProfile?.(m);
-        }}
-      />
+      {isOnlineModalOpen && (
+        <OnlineMembersModal
+          isOpen={isOnlineModalOpen}
+          onClose={() => setIsOnlineModalOpen(false)}
+          onlineUsers={onlineUsers}
+          members={members}
+          lang={lang}
+          onSelectMember={(m) => {
+            setIsOnlineModalOpen(false);
+            onSelectMemberProfile?.(m);
+          }}
+        />
+      )}
 
       {/* FAMILY GROUP CALL MODAL */}
-      <FamilyGroupCallModal
-        isOpen={isGroupCallModalOpen}
-        onClose={() => setIsGroupCallModalOpen(false)}
-        roomName="Bongsho_Family_Group_Room_2026"
-        userName={currentDisplayName || currentUsername || "Family Member"}
-        userPhoto={currentUserProfile?.photoUrl}
-        lang={lang}
-      />
+      {isGroupCallModalOpen && (
+        <FamilyGroupCallModal
+          isOpen={isGroupCallModalOpen}
+          onClose={() => setIsGroupCallModalOpen(false)}
+          roomName="Bongsho_Family_Group_Room_2026"
+          userName={currentDisplayName || currentUsername || "Family Member"}
+          userPhoto={currentUserProfile?.photoUrl}
+          lang={lang}
+        />
+      )}
     </section>
   );
 }
