@@ -33,6 +33,7 @@ const ChatLightbox = dynamic(() => import("./chat/ChatLightbox"), { ssr: false }
 
 interface FamilyChatProps {
   messages: FamilyChatMessage[];
+  isLoading?: boolean;
   members?: FamilyMember[];
   lang: Language;
   currentUsername: string | null;
@@ -55,6 +56,7 @@ interface FamilyChatProps {
 
 export default function FamilyChat({
   messages,
+  isLoading = false,
   members = [],
   lang,
   currentUsername,
@@ -289,6 +291,14 @@ export default function FamilyChat({
     });
   }, [messages, searchQuery, showPinnedOnly]);
 
+  const [renderedCount, setRenderedCount] = useState(35);
+
+  const visibleMessages = useMemo(() => {
+    if (searchQuery.trim() || showPinnedOnly) return filteredMessages;
+    if (filteredMessages.length <= renderedCount) return filteredMessages;
+    return filteredMessages.slice(-renderedCount);
+  }, [filteredMessages, renderedCount, searchQuery, showPinnedOnly]);
+
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     endRef.current?.scrollIntoView({ behavior });
     setUnreadCount(0);
@@ -317,6 +327,16 @@ export default function FamilyChat({
     const isUp = distanceFromBottom > 140;
     setShowScrollBottom(isUp);
     if (!isUp) setUnreadCount(0);
+
+    // Auto-load older messages when user scrolls near the top
+    if (el.scrollTop < 60 && !searchQuery.trim() && !showPinnedOnly) {
+      setRenderedCount((prev) => {
+        if (prev < filteredMessages.length) {
+          return Math.min(prev + 30, filteredMessages.length);
+        }
+        return prev;
+      });
+    }
   };
 
   const scrollToMessage = (msgId: string) => {
@@ -673,7 +693,31 @@ export default function FamilyChat({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-1.5 bg-[radial-gradient(#e5e0d8_1px,transparent_1px)] [background-size:18px_18px] bg-[#f8f6f2]"
       >
-        {filteredMessages.length === 0 ? (
+        {isLoading && messages.length === 0 ? (
+          <div className="h-full flex flex-col justify-end p-4 space-y-4 animate-pulse">
+            <div className="flex items-start gap-2.5 max-w-[75%]">
+              <div className="w-8 h-8 rounded-full bg-stone-300 shrink-0" />
+              <div className="space-y-1.5">
+                <div className="w-24 h-3 bg-stone-300 rounded" />
+                <div className="w-48 h-12 bg-stone-200 rounded-2xl rounded-tl-xs" />
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 max-w-[70%] ml-auto flex-row-reverse">
+              <div className="w-8 h-8 rounded-full bg-amber-200 shrink-0" />
+              <div className="space-y-1.5 flex flex-col items-end">
+                <div className="w-16 h-3 bg-stone-300 rounded" />
+                <div className="w-56 h-14 bg-amber-100 rounded-2xl rounded-tr-xs" />
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5 max-w-[65%]">
+              <div className="w-8 h-8 rounded-full bg-stone-300 shrink-0" />
+              <div className="space-y-1.5">
+                <div className="w-20 h-3 bg-stone-300 rounded" />
+                <div className="w-40 h-10 bg-stone-200 rounded-2xl rounded-tl-xs" />
+              </div>
+            </div>
+          </div>
+        ) : filteredMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center text-stone-500 p-6">
             <div className="w-16 h-16 rounded-3xl bg-amber-100/80 border border-amber-200 text-amber-600 flex items-center justify-center mb-3 shadow-xs">
               <MessageCircle className="w-8 h-8" />
@@ -694,73 +738,92 @@ export default function FamilyChat({
             </p>
           </div>
         ) : (
-          filteredMessages.map((message, index) => {
-            const isMine = message.authorUsername === currentUsername;
-            const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
-            const nextMsg = index < filteredMessages.length - 1 ? filteredMessages[index + 1] : null;
+          <>
+            {filteredMessages.length > visibleMessages.length && (
+              <div className="flex justify-center py-2">
+                <button
+                  type="button"
+                  onClick={() => setRenderedCount((prev) => prev + 35)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-200/90 hover:bg-stone-300 text-stone-700 text-xs font-semibold shadow-2xs transition active:scale-95 cursor-pointer border border-stone-300/60"
+                >
+                  <span>⬆</span>
+                  <span>
+                    {lang === "bn"
+                      ? `পূর্ববর্তী বার্তা দেখুন (${filteredMessages.length - visibleMessages.length}টি বাকি)`
+                      : `Load older messages (${filteredMessages.length - visibleMessages.length} remaining)`}
+                  </span>
+                </button>
+              </div>
+            )}
 
-            const currentDateLabel = formatDateLabel(message.createdAt, lang);
-            const prevDateLabel = prevMsg ? formatDateLabel(prevMsg.createdAt, lang) : null;
-            const showDateDivider = currentDateLabel !== prevDateLabel;
+            {visibleMessages.map((message, index) => {
+              const isMine = message.authorUsername === currentUsername;
+              const prevMsg = index > 0 ? visibleMessages[index - 1] : null;
+              const nextMsg = index < visibleMessages.length - 1 ? visibleMessages[index + 1] : null;
 
-            const isGroupedWithPrev =
-              !showDateDivider &&
-              prevMsg !== null &&
-              prevMsg.authorUsername === message.authorUsername &&
-              Math.abs(new Date(message.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) < 5 * 60 * 1000;
+              const currentDateLabel = formatDateLabel(message.createdAt, lang);
+              const prevDateLabel = prevMsg ? formatDateLabel(prevMsg.createdAt, lang) : null;
+              const showDateDivider = currentDateLabel !== prevDateLabel;
 
-            const isGroupedWithNext =
-              nextMsg !== null &&
-              formatDateLabel(nextMsg.createdAt, lang) === currentDateLabel &&
-              nextMsg.authorUsername === message.authorUsername &&
-              Math.abs(new Date(nextMsg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5 * 60 * 1000;
+              const isGroupedWithPrev =
+                !showDateDivider &&
+                prevMsg !== null &&
+                prevMsg.authorUsername === message.authorUsername &&
+                Math.abs(new Date(message.createdAt).getTime() - new Date(prevMsg.createdAt).getTime()) < 5 * 60 * 1000;
 
-            const matchedMember = memberByUsername.get(message.authorUsername.toLowerCase());
-            const authorDisplayName = getDisplayAuthorName(message);
+              const isGroupedWithNext =
+                nextMsg !== null &&
+                formatDateLabel(nextMsg.createdAt, lang) === currentDateLabel &&
+                nextMsg.authorUsername === message.authorUsername &&
+                Math.abs(new Date(nextMsg.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5 * 60 * 1000;
 
-            return (
-              <React.Fragment key={message.id}>
-                {showDateDivider && currentDateLabel && (
-                  <div className="flex items-center justify-center my-3">
-                    <span className="px-3 py-1 rounded-full bg-stone-200/85 backdrop-blur-xs text-stone-700 text-[11px] font-bold shadow-2xs border border-stone-300/60">
-                      {currentDateLabel}
-                    </span>
-                  </div>
-                )}
+              const matchedMember = memberByUsername.get(message.authorUsername.toLowerCase());
+              const authorDisplayName = getDisplayAuthorName(message);
 
-                <ChatMessageItem
-                  message={message}
-                  isMine={isMine}
-                  isGroupedWithPrev={isGroupedWithPrev}
-                  isGroupedWithNext={isGroupedWithNext}
-                  matchedMember={matchedMember}
-                  authorDisplayName={authorDisplayName}
-                  lang={lang}
-                  currentUsername={currentUsername}
-                  swipingMsgId={swipingMsgId}
-                  swipeOffset={swipeOffset}
-                  highlightedId={highlightedId}
-                  copiedId={copiedId}
-                  downloadingImageId={downloadingImageId}
-                  onTouchStart={(e) => handleTouchStart(message, e)}
-                  onTouchMove={(e) => handleTouchMove(message, e)}
-                  onTouchEnd={() => handleTouchEnd(message)}
-                  onTouchCancel={handleTouchCancel}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setActiveMenuMessage(message);
-                  }}
-                  onOpenProfile={handleOpenProfile}
-                  onScrollToMessage={scrollToMessage}
-                  onLightboxImage={setLightboxImage}
-                  onDownloadImage={handleDownloadImage}
-                  onOpenMenu={() => setActiveMenuMessage(message)}
-                  onToggleReaction={(emoji) => handleToggleReaction(message, emoji)}
-                  onOpenCallRoom={() => setIsGroupCallModalOpen(true)}
-                />
-              </React.Fragment>
-            );
-          })
+              return (
+                <React.Fragment key={message.id}>
+                  {showDateDivider && currentDateLabel && (
+                    <div className="flex items-center justify-center my-3">
+                      <span className="px-3 py-1 rounded-full bg-stone-200/85 backdrop-blur-xs text-stone-700 text-[11px] font-bold shadow-2xs border border-stone-300/60">
+                        {currentDateLabel}
+                      </span>
+                    </div>
+                  )}
+
+                  <ChatMessageItem
+                    message={message}
+                    isMine={isMine}
+                    isGroupedWithPrev={isGroupedWithPrev}
+                    isGroupedWithNext={isGroupedWithNext}
+                    matchedMember={matchedMember}
+                    authorDisplayName={authorDisplayName}
+                    lang={lang}
+                    currentUsername={currentUsername}
+                    swipingMsgId={swipingMsgId}
+                    swipeOffset={swipeOffset}
+                    highlightedId={highlightedId}
+                    copiedId={copiedId}
+                    downloadingImageId={downloadingImageId}
+                    onTouchStart={(e) => handleTouchStart(message, e)}
+                    onTouchMove={(e) => handleTouchMove(message, e)}
+                    onTouchEnd={() => handleTouchEnd(message)}
+                    onTouchCancel={handleTouchCancel}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setActiveMenuMessage(message);
+                    }}
+                    onOpenProfile={handleOpenProfile}
+                    onScrollToMessage={scrollToMessage}
+                    onLightboxImage={setLightboxImage}
+                    onDownloadImage={handleDownloadImage}
+                    onOpenMenu={() => setActiveMenuMessage(message)}
+                    onToggleReaction={(emoji) => handleToggleReaction(message, emoji)}
+                    onOpenCallRoom={() => setIsGroupCallModalOpen(true)}
+                  />
+                </React.Fragment>
+              );
+            })}
+          </>
         )}
         <div ref={endRef} />
       </div>

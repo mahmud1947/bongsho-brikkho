@@ -7,6 +7,7 @@ import { useFamily } from "@/context/FamilyContext";
 export default function ChatPage() {
   const {
     chatMessages,
+    isChatLoading,
     members,
     lang,
     currentUsername,
@@ -35,6 +36,7 @@ export default function ChatPage() {
     <div className="w-full h-full flex flex-col min-h-0 flex-1 overflow-hidden">
       <FamilyChat
         messages={chatMessages}
+        isLoading={isChatLoading}
         members={members}
         lang={lang}
         currentUsername={currentUsername}

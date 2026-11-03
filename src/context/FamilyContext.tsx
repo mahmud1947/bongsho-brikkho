@@ -45,6 +45,7 @@ const USERNAME_KEY = "bongsho_current_username";
 const ADMIN_PASSWORD = "Mahmud2026";
 const ADMIN_STORAGE_KEY = "bongsho_is_admin";
 const LANG_STORAGE_KEY = "bongsho_preferred_language";
+const CHAT_CACHE_KEY = "bongsho_chat_messages_cache_v2";
 
 const defaultGroupSettings: GroupSettings = {
   groupNameBn: "Family Chat",
@@ -65,6 +66,7 @@ interface FamilyContextType {
   gallery: GalleryItem[];
   notices: FamilyNotice[];
   chatMessages: FamilyChatMessage[];
+  isChatLoading: boolean;
   unseenChatCount: number;
   markChatAsRead: () => void;
   currentUsername: string | null;
@@ -147,7 +149,30 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [notices, setNotices] = useState<FamilyNotice[]>([]);
-  const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>([]);
+  const [chatMessages, setChatMessages] = useState<FamilyChatMessage[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(CHAT_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [isChatLoading, setIsChatLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(CHAT_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return false;
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [unseenChatCount, setUnseenChatCount] = useState<number>(0);
   const [currentUsername, setCurrentUsername] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -319,85 +344,71 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
       orderBy("createdAt", "desc"),
       limit(150)
     );
-    const unsubChatMessages = onSnapshot(chatQuery, (snap) => {
-      const list = snap.docs.map((d) => d.data() as FamilyChatMessage);
-      list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-      setChatMessages(list);
+    const unsubChatMessages = onSnapshot(
+      chatQuery,
+      (snap) => {
+        const list = snap.docs.map((d) => d.data() as FamilyChatMessage);
+        list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        setChatMessages(list);
+        setIsChatLoading(false);
 
-      const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "";
-
-      // Message Delivery & Read receipts update
-      if (user) {
-        const isOnChatPage = typeof window !== "undefined" && window.location.pathname.includes("/chat");
-        list.forEach((m) => {
-          if (m.authorUsername !== user) {
-            let needsUpdate = false;
-            const patch: Partial<FamilyChatMessage> = {};
-
-            // Mark delivered if not recorded yet
-            if (!m.deliveredTo || !m.deliveredTo[user]) {
-              patch.deliveredTo = { ...(m.deliveredTo || {}), [user]: new Date().toISOString() };
-              patch.status = "delivered";
-              needsUpdate = true;
-            }
-
-            // Mark read if user is currently looking at chat
-            if (isOnChatPage && (!m.readBy || !m.readBy[user])) {
-              patch.readBy = { ...(m.readBy || {}), [user]: new Date().toISOString() };
-              patch.status = "read";
-              needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-              setDoc(doc(db, "chat_messages", m.id), cleanData(patch), { merge: true }).catch(() => {});
-            }
+        // Cache latest 100 messages locally for instant 0ms startup
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify(list.slice(-100)));
           }
-        });
-      }
+        } catch {}
 
-      // Skip sound and notification on initial load
-      if (isInitialChatSnapshot) {
-        isInitialChatSnapshot = false;
-        return;
-      }
+        const user = currentUsernameRef.current || localStorage.getItem(USERNAME_KEY) || "";
 
-      // Check for incoming new messages
-      const addedChanges = snap.docChanges().filter((change) => change.type === "added");
-      if (addedChanges.length > 0) {
-        const newOthersMessages = addedChanges
-          .map((c) => c.doc.data() as FamilyChatMessage)
-          .filter((m) => m.authorUsername !== user)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        // Skip sound and notification on initial load
+        if (isInitialChatSnapshot) {
+          isInitialChatSnapshot = false;
+          return;
+        }
 
-        if (newOthersMessages.length > 0) {
-          const newest = newOthersMessages[0];
-          playNotificationChime();
-          vibrateDevice([140, 70, 140]);
+        // Check for incoming new messages
+        const addedChanges = snap.docChanges().filter((change) => change.type === "added");
+        if (addedChanges.length > 0) {
+          const newOthersMessages = addedChanges
+            .map((c) => c.doc.data() as FamilyChatMessage)
+            .filter((m) => m.authorUsername !== user)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-          const senderName =
-            newest.authorNameBn ||
-            newest.authorNameEn ||
-            `@${newest.authorUsername}`;
-          const bodyText =
-            newest.text ||
-            (newest.audioUrl ? "🎤 ভয়েস মেসেজ" : newest.imageUrl ? "📷 ছবি পাঠিয়েছেন" : "নতুন বার্তা");
+          if (newOthersMessages.length > 0) {
+            const newest = newOthersMessages[0];
+            playNotificationChime();
+            vibrateDevice([140, 70, 140]);
 
-          const isMentioned = Boolean(user && newest.mentions && newest.mentions.includes(user));
+            const senderName =
+              newest.authorNameBn ||
+              newest.authorNameEn ||
+              `@${newest.authorUsername}`;
+            const bodyText =
+              newest.text ||
+              (newest.audioUrl ? "🎤 ভয়েস মেসেজ" : newest.imageUrl ? "📷 ছবি পাঠিয়েছেন" : "নতুন বার্তা");
 
-          if (isMentioned) {
-            showBrowserNotification(`🔔 ${senderName} আপনাকে মেনশন করেছেন!`, {
-              body: bodyText,
-              tag: `bongsho-mention-${newest.id}`,
-            });
-          } else {
-            showBrowserNotification(`Family Chat: ${senderName}`, {
-              body: bodyText,
-              tag: `bongsho-chat-${newest.id}`,
-            });
+            const isMentioned = Boolean(user && newest.mentions && newest.mentions.includes(user));
+
+            if (isMentioned) {
+              showBrowserNotification(`🔔 ${senderName} আপনাকে মেনশন করেছেন!`, {
+                body: bodyText,
+                tag: `bongsho-mention-${newest.id}`,
+              });
+            } else {
+              showBrowserNotification(`Family Chat: ${senderName}`, {
+                body: bodyText,
+                tag: `bongsho-chat-${newest.id}`,
+              });
+            }
           }
         }
+      },
+      (err) => {
+        console.error("Chat messages listener error:", err);
+        setIsChatLoading(false);
       }
-    });
+    );
 
     // Subscribe to Group Settings
     const unsubGroup = onSnapshot(doc(db, "group_settings", "general"), (snap) => {
@@ -739,6 +750,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
         gallery,
         notices,
         chatMessages,
+        isChatLoading,
         unseenChatCount,
         markChatAsRead,
         currentUsername,
